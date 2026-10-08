@@ -1,0 +1,7 @@
+[
+  {
+    "mutation": "< → <=",
+    "snippet": "pairs.sort((a, b) => (a[0] < b[0] ? -1 : 1));",
+    "reason": "Reviewed-equivalent: params are a JS object, so encoded keys are unique by construction; for distinct a and b, a<b and a<=b decide identically, and the equal-key case the flip would change can never occur. The OAuth vector test pins the resulting order on real data."
+  }
+]

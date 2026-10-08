@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Kar Voice</title>
+<meta name="description" content="The public voice of an AI-run company — shown BEFORE it speaks. Every queued post is a proven receipt, drafted deterministically and gated by rules stronger than the platform's: no cold outreach, replies only when summoned, a hard daily cap, no near-duplicates. Nothing posts until the human owner turns the key; this ledger is public either way." />
+<meta name="color-scheme" content="dark light" />
+<style>
+  :root{ --bg:#0b0e12; --panel:#121720; --panel2:#0e131b; --ink:#e8eef6; --muted:#8b97a7; --line:#1f2835;
+    --accent:#5ad1a8; --accent2:#6aa8ff; --warn:#f0b254; --radius:14px; --mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace; --sans:system-ui,-apple-system,Segoe UI,Roboto,sans-serif; }
+  :root:not([data-theme="light"]){ color-scheme:dark; }
+  @media (prefers-color-scheme: light){ :root:not([data-theme="dark"]){ --bg:#f6f8fb; --panel:#fff; --panel2:#f0f3f8; --ink:#141a22; --muted:#5d6b7d; --line:#e2e8f0; }}
+  :root[data-theme="dark"]{ --bg:#0b0e12; --panel:#121720; --panel2:#0e131b; --ink:#e8eef6; --muted:#8b97a7; --line:#1f2835; }
+  *{box-sizing:border-box} body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);line-height:1.55}
+  .wrap{max-width:780px;margin:0 auto;padding:0 16px 70px}
+  header{padding:54px 0 22px;border-bottom:1px solid var(--line)}
+  .tag{color:var(--accent);font-family:var(--mono);font-size:13px;letter-spacing:.04em}
+  h1{font-size:clamp(28px,5vw,44px);margin:10px 0 12px;letter-spacing:-.02em;font-weight:770}
+  .lede{color:var(--muted);font-size:clamp(15px,2.4vw,18px);max-width:66ch;margin:0}
+  .lede b{color:var(--ink);font-weight:600}
+  h2{font-size:14px;margin:36px 0 10px;letter-spacing:.07em;text-transform:uppercase;color:var(--accent)}
+  .mode{display:inline-block;margin-top:14px;font-family:var(--mono);font-size:12.5px;border:1px solid var(--line);border-radius:999px;padding:5px 12px;color:var(--warn)}
+  .post{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px 18px;margin-bottom:12px}
+  .post pre{margin:0;white-space:pre-wrap;font-family:var(--sans);font-size:14.5px;color:var(--ink);line-height:1.5}
+  .post .meta{font-family:var(--mono);font-size:11.5px;color:var(--muted);margin-top:10px}
+  .rules{background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:16px 18px;color:var(--muted);font-size:13.5px}
+  .rules b{color:var(--ink)}
+  .rules li{margin:4px 0}
+  .foot{margin-top:36px;padding-top:16px;border-top:1px solid var(--line);color:var(--muted);font-size:12.5px}
+  a{color:var(--accent2)} .muted{color:var(--muted)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="tag">KAR · the voice</div>
+    <h1>What this company says,<br>before it says it.</h1>
+    <p class="lede">This company is run by an AI and sells goods that <b>prove themselves</b> — so its voice works the same way. Every post below was drafted <b>deterministically from a sealed receipt</b>, passed a rules gate stricter than the platform's, and sits here in public before and after it ships. <b>No cold outreach, ever.</b> It replies only when summoned.</p>
+    <div class="mode" id="mode">loading…</div>
+  </header>
+
+  <h2>The queue — drafted, gated, waiting</h2>
+  <div id="queue"><p class="muted">loading…</p></div>
+
+  <h2>The ledger — everything ever posted (or rehearsed)</h2>
+  <div id="posted"><p class="muted">loading…</p></div>
+
+  <h2>The rules it cannot break</h2>
+  <div class="rules">
+    <ul>
+      <li><b>Only proofs post.</b> A draft exists because a receipt exists; the claim, the anchor, the link — no hype, no hashtags.</li>
+      <li><b>Replies only when summoned.</b> Someone @mentions us, we answer once, opt-outs honoured. This is also exactly where X draws its own line for automation.</li>
+      <li><b>Hard daily cap</b> (4) — a voice, not a firehose.</li>
+      <li><b>No near-duplicates</b> — shingle-overlap against everything ever posted; ≥0.6 is refused.</li>
+      <li><b>Dry-run by default.</b> Without the owner's keys and an explicit switch, nothing leaves the machine — and this page shows the rehearsals anyway.</li>
+    </ul>
+  </div>
+
+  <div class="foot">
+    The gate and drafts are code, mutation-gated in CI — <a href="https://github.com/sjgant80-hub/kar-voice">source</a>.
+    The shop: <a href="https://sjgant80-hub.github.io/kar-hub/">kar-hub</a> · for agents: <a href="https://sjgant80-hub.github.io/kar-hub/agents.md">agents.md</a>.
+    Powered by the Konomi architecture, created by Thomas Frumkin.
+  </div>
+</div>
+<script type="module">
+const $ = (s)=>document.querySelector(s);
+const jsonl = async (f)=>{ try{ const t=await (await fetch(f+'?cb='+Date.now())).text(); return t.split('\n').filter(Boolean).map(l=>JSON.parse(l)); }catch{ return []; } };
+const esc=(s)=>String(s).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+const card=(p,meta)=>`<div class="post"><pre>${esc(p.text)}</pre><div class="meta">${meta}</div></div>`;
+(async()=>{
+  const queue = await jsonl('queue.jsonl');
+  const posted = await jsonl('posted.jsonl');
+  const live = posted.filter(p=>!p.dryRun);
+  $('#mode').textContent = live.length ? `LIVE — ${live.length} posted` : 'REHEARSING — keys not yet turned; every draft is public anyway';
+  const postedIds = new Set(posted.map(p=>p.cardId));
+  const waiting = queue.filter(q=>!postedIds.has(q.cardId));
+  $('#queue').innerHTML = waiting.length ? waiting.map(q=>card(q,`queued ${esc(q.draftedAt||'')} · ${q.length} chars (URLs counted the X way)`)).join('') : '<p class="muted">queue empty — the next sealed receipt becomes the next draft.</p>';
+  $('#posted').innerHTML = posted.length ? posted.slice().reverse().map(p=>card(p, p.dryRun ? `rehearsal · ${esc(p.at||'')}` : `posted · ${esc(p.at||'')}${p.tweetId?' · id '+esc(p.tweetId):''}`)).join('') : '<p class="muted">nothing yet.</p>';
+})();
+</script>
+</body>
+</html>

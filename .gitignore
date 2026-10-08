@@ -1,0 +1,3 @@
+_gate-*.json
+*.witnessbak
+node_modules/
