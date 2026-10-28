@@ -1,0 +1,488 @@
+{
+ "kind": "kar-voice-claimgate-run",
+ "seal": "06b8683",
+ "claims": {
+  "V1": {
+   "pass": true,
+   "measured": "4 of 4 refused; 0 of 4 queued drafts posted or rehearsed",
+   "gate": [
+    {
+     "id": "witness-ms-landing",
+     "ok": false,
+     "why": [
+      "no receipt"
+     ]
+    },
+    {
+     "id": "kar-hub-agent-shelf",
+     "ok": false,
+     "why": [
+      "no receipt"
+     ]
+    },
+    {
+     "id": "konomi-cortex",
+     "ok": false,
+     "why": [
+      "no receipt"
+     ]
+    },
+    {
+     "id": "your-brain-product",
+     "ok": false,
+     "why": [
+      "no receipt"
+     ]
+    }
+   ],
+   "post": [
+    {
+     "id": "witness-ms-landing",
+     "why": "no receipt"
+    },
+    {
+     "id": "kar-hub-agent-shelf",
+     "why": "no receipt"
+    },
+    {
+     "id": "konomi-cortex",
+     "why": "no receipt"
+    },
+    {
+     "id": "your-brain-product",
+     "why": "no receipt"
+    }
+   ]
+  },
+  "V2": {
+   "pass": true,
+   "measured": "5 of 5 pass",
+   "cards": [
+    {
+     "id": "witness-ms",
+     "ok": true,
+     "why": []
+    },
+    {
+     "id": "kar-controller",
+     "ok": true,
+     "why": []
+    },
+    {
+     "id": "churn-book",
+     "ok": true,
+     "why": []
+    },
+    {
+     "id": "credit-book",
+     "ok": true,
+     "why": []
+    },
+    {
+     "id": "conductor",
+     "ok": true,
+     "why": []
+    }
+   ]
+  },
+  "V3": {
+   "pass": false,
+   "measured": "35 of 35 refused, 33 for their own reason",
+   "forgeries": [
+    {
+     "card": "witness-ms",
+     "forgery": "F1",
+     "refused": true,
+     "forItsReason": true,
+     "why": [
+      "the number 16 is not a field of the receipt"
+     ]
+    },
+    {
+     "card": "witness-ms",
+     "forgery": "F2",
+     "refused": true,
+     "forItsReason": true,
+     "why": [
+      "summary.killed is 15 in the receipt, not 16",
+      "the number 16 is not a field of the receipt"
+     ]
+    },
+    {
+     "card": "witness-ms",
+     "forgery": "F3",
+     "refused": true,
+     "forItsReason": true,
+     "why": [
+      "the receipt at that commit is not the file the card pinned"
+     ]
+    },
+    {
+     "card": "witness-ms",
+     "forgery": "F4",
+     "refused": true,
+     "forItsReason": true,
+     "why": [
+      "the receipt must be pinned to a full commit, not a branch"
+     ]
+    },
+    {
+     "card": "witness-ms",
+     "forgery": "F5",
+     "refused": true,
+     "forItsReason": true,
+     "why": [
+      "hype: say what the receipt shows instead"
+     ]
+    },
+    {
+     "card": "witness-ms",
+     "forgery": "F6",
+     "refused": true,
+     "forItsReason": true,
+     "why": [
+      "a price: never on a product surface",
+      "the number 49 is not a field of the receipt"
+     ]
+    },
+    {
+     "card": "witness-ms",
+     "forgery": "F7",
+     "refused": true,
+     "forItsReason": true,
+     "why": [
+      "an economy term: kept off every public surface"
+     ]
+    },
+    {
+     "card": "kar-controller",
+     "forgery": "F1",
+     "refused": true,
+     "forItsReason": true,
+     "why": [
+      "the number 7 is not a field of the receipt"
+     ]
+    },
+    {
+     "card": "kar-controller",
+     "forgery": "F2",
+     "refused": true,
+     "forItsReason": true,
+     "why": [
+      "held is 6 in the receipt, not 7",
+      "the number 7 is not a field of the receipt"
+     ]
+    },
+    {
+     "card": "kar-controller",
+     "forgery": "F3",
+     "refused": true,
+     "forItsReason": true,
+     "why": [
+      "the receipt at that commit is not the file the card pinned"
+     ]
+    },
+    {
+     "card": "kar-controller",
+     "forgery": "F4",
+     "refused": true,
+     "forItsReason": true,
+     "why": [
+      "the receipt must be pinned to a full commit, not a branch"
+     ]
+    },
+    {
+     "card": "kar-controller",
+     "forgery": "F5",
+     "refused": true,
+     "forItsReason": true,
+     "why": [
+      "hype: say what the receipt shows instead"
+     ]
+    },
+    {
+     "card": "kar-controller",
+     "forgery": "F6",
+     "refused": true,
+     "forItsReason": true,
+     "why": [
+      "a price: never on a product surface",
+      "the number 49 is not a field of the receipt"
+     ]
+    },
+    {
+     "card": "kar-controller",
+     "forgery": "F7",
+     "refused": true,
+     "forItsReason": true,
+     "why": [
+      "an economy term: kept off every public surface"
+     ]
+    },
+    {
+     "card": "churn-book",
+     "forgery": "F1",
+     "refused": true,
+     "forItsReason": true,
+     "why": [
+      "the number 8 is not a field of the receipt"
+     ]
+    },
+    {
+     "card": "churn-book",
+     "forgery": "F2",
+     "refused": true,
+     "forItsReason": false,
+     "why": [
+      "the number 8 is not a field of the receipt"
+     ]
+    },
+    {
+     "card": "churn-book",
+     "forgery": "F3",
+     "refused": true,
+     "forItsReason": true,
+     "why": [
+      "the receipt at that commit is not the file the card pinned"
+     ]
+    },
+    {
+     "card": "churn-book",
+     "forgery": "F4",
+     "refused": true,
+     "forItsReason": true,
+     "why": [
+      "the receipt must be pinned to a full commit, not a branch"
+     ]
+    },
+    {
+     "card": "churn-book",
+     "forgery": "F5",
+     "refused": true,
+     "forItsReason": true,
+     "why": [
+      "hype: say what the receipt shows instead"
+     ]
+    },
+    {
+     "card": "churn-book",
+     "forgery": "F6",
+     "refused": true,
+     "forItsReason": true,
+     "why": [
+      "a price: never on a product surface",
+      "the number 49 is not a field of the receipt"
+     ]
+    },
+    {
+     "card": "churn-book",
+     "forgery": "F7",
+     "refused": true,
+     "forItsReason": true,
+     "why": [
+      "an economy term: kept off every public surface"
+     ]
+    },
+    {
+     "card": "credit-book",
+     "forgery": "F1",
+     "refused": true,
+     "forItsReason": true,
+     "why": [
+      "the number 0.673 is not a field of the receipt"
+     ]
+    },
+    {
+     "card": "credit-book",
+     "forgery": "F2",
+     "refused": true,
+     "forItsReason": false,
+     "why": [
+      "the number 0.673 is not a field of the receipt"
+     ]
+    },
+    {
+     "card": "credit-book",
+     "forgery": "F3",
+     "refused": true,
+     "forItsReason": true,
+     "why": [
+      "the receipt at that commit is not the file the card pinned"
+     ]
+    },
+    {
+     "card": "credit-book",
+     "forgery": "F4",
+     "refused": true,
+     "forItsReason": true,
+     "why": [
+      "the receipt must be pinned to a full commit, not a branch"
+     ]
+    },
+    {
+     "card": "credit-book",
+     "forgery": "F5",
+     "refused": true,
+     "forItsReason": true,
+     "why": [
+      "hype: say what the receipt shows instead"
+     ]
+    },
+    {
+     "card": "credit-book",
+     "forgery": "F6",
+     "refused": true,
+     "forItsReason": true,
+     "why": [
+      "a price: never on a product surface",
+      "the number 49 is not a field of the receipt"
+     ]
+    },
+    {
+     "card": "credit-book",
+     "forgery": "F7",
+     "refused": true,
+     "forItsReason": true,
+     "why": [
+      "an economy term: kept off every public surface"
+     ]
+    },
+    {
+     "card": "conductor",
+     "forgery": "F1",
+     "refused": true,
+     "forItsReason": true,
+     "why": [
+      "the number 6 is not a field of the receipt"
+     ]
+    },
+    {
+     "card": "conductor",
+     "forgery": "F2",
+     "refused": true,
+     "forItsReason": true,
+     "why": [
+      "held is 5 in the receipt, not 6",
+      "the number 6 is not a field of the receipt"
+     ]
+    },
+    {
+     "card": "conductor",
+     "forgery": "F3",
+     "refused": true,
+     "forItsReason": true,
+     "why": [
+      "the receipt at that commit is not the file the card pinned"
+     ]
+    },
+    {
+     "card": "conductor",
+     "forgery": "F4",
+     "refused": true,
+     "forItsReason": true,
+     "why": [
+      "the receipt must be pinned to a full commit, not a branch"
+     ]
+    },
+    {
+     "card": "conductor",
+     "forgery": "F5",
+     "refused": true,
+     "forItsReason": true,
+     "why": [
+      "hype: say what the receipt shows instead"
+     ]
+    },
+    {
+     "card": "conductor",
+     "forgery": "F6",
+     "refused": true,
+     "forItsReason": true,
+     "why": [
+      "a price: never on a product surface",
+      "the number 49 is not a field of the receipt"
+     ]
+    },
+    {
+     "card": "conductor",
+     "forgery": "F7",
+     "refused": true,
+     "forItsReason": true,
+     "why": [
+      "an economy term: kept off every public surface"
+     ]
+    }
+   ]
+  },
+  "V4": {
+   "pass": true,
+   "measured": "refused: verdicts.2.held belongs to a claim that FAILED"
+  },
+  "V5": {
+   "pass": true,
+   "measured": "X calls 0,0,0,0,0,1; dry-run record of the approved text: yes; the live call carried the approved text: yes",
+   "scenarios": [
+    {
+     "name": "no approval, live",
+     "calls": 0,
+     "sentText": null,
+     "approvedText": "witness: on vercel/ms, ms's own tests killed 15 of 17 mutants; 2 survived — two boundaries those tests never check\nReceipt anchor 7bb572c347bf… — re-run it and the hash reproduces, or the claim is refused.\nhttps://sjgant80-hub.github.io/witness/",
+     "dryRecords": 0,
+     "dryText": null,
+     "why": "waiting for Simon’s approval"
+    },
+    {
+     "name": "approved, then edited by one character, live",
+     "calls": 0,
+     "sentText": null,
+     "approvedText": "witness: on vercel/ms, ms's own tests killed 15 of 17 mutants; 2 survived — two boundaries those tests never check\nReceipt anchor 7bb572c347bf… — re-run it and the hash reproduces, or the claim is refused.\nhttps://sjgant80-hub.github.io/witness/",
+     "dryRecords": 0,
+     "dryText": null,
+     "why": "the queued words are not the gated card’s draft"
+    },
+    {
+     "name": "rehearsal approval, live",
+     "calls": 0,
+     "sentText": null,
+     "approvedText": "witness: on vercel/ms, ms's own tests killed 15 of 17 mutants; 2 survived — two boundaries those tests never check\nReceipt anchor 7bb572c347bf… — re-run it and the hash reproduces, or the claim is refused.\nhttps://sjgant80-hub.github.io/witness/",
+     "dryRecords": 0,
+     "dryText": null,
+     "why": "a rehearsal approval can never post for real"
+    },
+    {
+     "name": "approved then withdrawn, live",
+     "calls": 0,
+     "sentText": null,
+     "approvedText": "witness: on vercel/ms, ms's own tests killed 15 of 17 mutants; 2 survived — two boundaries those tests never check\nReceipt anchor 7bb572c347bf… — re-run it and the hash reproduces, or the claim is refused.\nhttps://sjgant80-hub.github.io/witness/",
+     "dryRecords": 0,
+     "dryText": null,
+     "why": "Simon withdrew the approval"
+    },
+    {
+     "name": "Simon approved, dry run",
+     "calls": 0,
+     "sentText": null,
+     "approvedText": "witness: on vercel/ms, ms's own tests killed 15 of 17 mutants; 2 survived — two boundaries those tests never check\nReceipt anchor 7bb572c347bf… — re-run it and the hash reproduces, or the claim is refused.\nhttps://sjgant80-hub.github.io/witness/",
+     "dryRecords": 1,
+     "dryText": "witness: on vercel/ms, ms's own tests killed 15 of 17 mutants; 2 survived — two boundaries those tests never check\nReceipt anchor 7bb572c347bf… — re-run it and the hash reproduces, or the claim is refused.\nhttps://sjgant80-hub.github.io/witness/",
+     "why": "approved by Simon in chat"
+    },
+    {
+     "name": "Simon approved, live",
+     "calls": 1,
+     "sentText": "witness: on vercel/ms, ms's own tests killed 15 of 17 mutants; 2 survived — two boundaries those tests never check\nReceipt anchor 7bb572c347bf… — re-run it and the hash reproduces, or the claim is refused.\nhttps://sjgant80-hub.github.io/witness/",
+     "approvedText": "witness: on vercel/ms, ms's own tests killed 15 of 17 mutants; 2 survived — two boundaries those tests never check\nReceipt anchor 7bb572c347bf… — re-run it and the hash reproduces, or the claim is refused.\nhttps://sjgant80-hub.github.io/witness/",
+     "dryRecords": 0,
+     "dryText": null,
+     "why": "approved by Simon in chat"
+    }
+   ]
+  },
+  "V6": {
+   "pass": true,
+   "measured": "0 occurrences of the four fake key values in every file written and every line printed"
+  }
+ },
+ "held": 5,
+ "of": 6
+}

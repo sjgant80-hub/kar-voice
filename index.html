@@ -40,8 +40,12 @@
     <div class="mode" id="mode">loading…</div>
   </header>
 
-  <h2>The queue — drafted, gated, waiting</h2>
+  <h2>The queue — drafted, gated, waiting for Simon</h2>
+  <p class="muted" style="font-size:13.5px;margin:-4px 0 12px">Each draft below is re-checked in your browser as the page loads: its receipt is fetched from GitHub at the exact commit the card pins, hashed, and every number in the post is matched to a field of that receipt. Then it waits for Simon's approval of those exact words.</p>
   <div id="queue"><p class="muted">loading…</p></div>
+
+  <h2>The claim gate, measured</h2>
+  <div id="measured" class="rules"><p class="muted">loading…</p></div>
 
   <h2>The ledger — everything ever posted (or rehearsed)</h2>
   <div id="posted"><p class="muted">loading…</p></div>
@@ -49,7 +53,8 @@
   <h2>The rules it cannot break</h2>
   <div class="rules">
     <ul>
-      <li><b>Only proofs post.</b> A draft exists because a receipt exists; the claim, the anchor, the link — no hype, no hashtags.</li>
+      <li><b>Every claim is checked against a committed receipt.</b> A card pins one JSON receipt by repo, full commit and sha256; every number in the post must be a named field of it; a number from a claim that failed is refused; no hype, no prices, no economy talk.</li>
+      <li><b>Nothing leaves without Simon's approval of the exact words.</b> The approval names the post and the sha256 of its text — change one character and it no longer counts. A rehearsal approval can only ever authorise a dry run.</li>
       <li><b>Replies only when summoned.</b> Someone @mentions us, we answer once, opt-outs honoured. This is also exactly where X draws its own line for automation.</li>
       <li><b>Hard daily cap</b> (4) — a voice, not a firehose.</li>
       <li><b>No near-duplicates</b> — shingle-overlap against everything ever posted; ≥0.6 is refused.</li>
@@ -73,9 +78,30 @@ const card=(p,meta)=>`<div class="post"><pre>${esc(p.text)}</pre><div class="met
   const posted = await jsonl('posted.jsonl');
   const live = posted.filter(p=>!p.dryRun);
   $('#mode').textContent = live.length ? `LIVE — ${live.length} posted` : 'REHEARSING — keys not yet turned; every draft is public anyway';
-  const postedIds = new Set(posted.map(p=>p.cardId));
-  const waiting = queue.filter(q=>!postedIds.has(q.cardId));
-  $('#queue').innerHTML = waiting.length ? waiting.map(q=>card(q,`queued ${esc(q.draftedAt||'')} · ${q.length} chars (URLs counted the X way)`)).join('') : '<p class="muted">queue empty — the next sealed receipt becomes the next draft.</p>';
+  const { checkCard, approvalFor, pinned } = await import('./claim-gate.mjs');
+  const feed = await jsonl('feed.jsonl'), approvals = await jsonl('approvals.jsonl');
+  const hex = async (buf) => [...new Uint8Array(await crypto.subtle.digest('SHA-256', buf))].map(b=>b.toString(16).padStart(2,'0')).join('');
+  const gate = async (c) => {
+    if (!c || pinned(c.receipt)) return checkCard(c, '', '');
+    try { const r = await fetch(`https://raw.githubusercontent.com/${c.receipt.repo}/${c.receipt.commit}/${c.receipt.path}`); const buf = await r.arrayBuffer(); return checkCard(c, new TextDecoder().decode(buf), await hex(buf)); }
+    catch { return { ok:false, why:['the receipt could not be fetched'] }; }
+  };
+  const livePosted = new Set(live.map(p=>p.cardId));
+  const waiting = queue.filter(q=>!livePosted.has(q.cardId));
+  const rows = [];
+  for (const q of waiting) {
+    const c = feed.find(f=>f.id===q.cardId);
+    const g = await gate(c);
+    const a = approvalFor(q.cardId, await hex(new TextEncoder().encode(q.text)), approvals, false);
+    const state = !g.ok ? `<span style="color:var(--warn)">refused by the claim gate: ${esc(g.why.join('; '))}</span>` : a.ok ? `claim gate passed · ${esc(a.why)}` : `claim gate passed · <span style="color:var(--warn)">${esc(a.why)}</span>`;
+    rows.push(card(q, `${state}<br>queued ${esc(q.draftedAt||'')} · ${q.length} chars (URLs counted the X way)` + (c && c.receipt && c.receipt.commit ? ` · receipt <a href="https://github.com/${esc(c.receipt.repo)}/blob/${esc(c.receipt.commit)}/${esc(c.receipt.path)}">${esc(c.receipt.repo.split('/')[1])}@${esc(c.receipt.commit.slice(0,7))}</a>` : '')));
+  }
+  $('#queue').innerHTML = rows.length ? rows.join('') : '<p class="muted">queue empty — the next sealed receipt becomes the next draft.</p>';
+  try {
+    const m = await (await fetch('data/claimgate-run.json?cb='+Date.now())).json();
+    const li = Object.entries(m.claims).map(([k,c])=>`<li><b>${k} ${c.pass?'held':'FAILED'}</b> — ${esc(c.measured)}</li>`).join('');
+    $('#measured').innerHTML = `<p style="margin:0 0 8px"><b>${m.held} of ${m.of} sealed claims held</b> (sealed before the gate's code, <a href="https://github.com/sjgant80-hub/kar-voice/blob/main/data/claimgate-prereg.json">the seal</a>, <a href="https://github.com/sjgant80-hub/kar-voice/blob/main/data/claimgate-run.json">the receipt</a> — CI re-measures it on every push).</p><ul>${li}</ul><p style="margin:8px 0 0">V3 failed as sealed: all 35 forgeries were refused, but for two cards the sealed forgery rule could not build its "edit the receipt field too" forgery — the first number was the 7 in "7B" (no numeric field holds it) and a rounded 0.672 (the field is 0.672461) — so those two were refused as plain moved numbers, not for the marker the seal named. The failure is kept.</p>`;
+  } catch { $('#measured').innerHTML = '<p class="muted">the measurement could not be loaded.</p>'; }
   $('#posted').innerHTML = posted.length ? posted.slice().reverse().map(p=>card(p, p.dryRun ? `rehearsal · ${esc(p.at||'')}` : `posted · ${esc(p.at||'')}${p.tweetId?' · id '+esc(p.tweetId):''}`)).join('') : '<p class="muted">nothing yet.</p>';
 })();
 </script>
