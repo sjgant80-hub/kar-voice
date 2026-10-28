@@ -1,0 +1,52 @@
+{
+ "kind": "kar-voice-claimgate-prereg",
+ "v": 1,
+ "sealed": "2026-10-28",
+ "question": "Can the company's voice on X be held to two rules it cannot break — every claim checked against a committed receipt, and nothing leaving without Simon's approval of those exact words — while it runs key-ready, so that on the day Simon authorises the connector nothing about it changes?",
+ "why": "Simon's AI-first company spec (2026-10-28), build step 2: 'the OAuth posting connector under Kar's claim gate'. Hard lines: never handle OAuth secrets (the connector is dry-run until Simon authorises it himself); nothing posted, sent, replied or DM'd without Simon's explicit approval in chat for that action; the claim gate checks every claim against a committed receipt. kar-voice already drafts from receipt cards, gates length/duplicates/daily cap, replies only when summoned, and signs OAuth 1.0a — but its `post` would post the oldest queued draft with no approval, and a card's claim is free text checked against nothing.",
+ "design": {
+  "card": "A card names its receipt by repo (sjgant80-hub/<name>), full 40-hex commit, path to one JSON file, and that file's sha256; and lists facts: {path, value} — dotted paths into the receipt and the value each must have there.",
+  "claimGate": "The IO fetches the receipt from GitHub at the pinned commit and hashes it; the kernel refuses the card if: the receipt is not pinned to a full commit; the hash differs; a fact's path is missing or holds another value; a fact sits inside a claim that FAILED (an object on its path with held:false or pass:false); any number in the post's name or claim is not one of the facts' numbers (whole numbers exactly, decimals rounded to the places the post shows, a percentage as the field x100); the post has a hype word, a price, an economy term or estate jargon; the link leaves the estate's own pages and repos.",
+  "approval": "An approval record names the item and the sha256 of its exact text: { itemId, textSha256, by: 'simon' | 'rehearsal', via: 'chat', quote, at }. Kar writes a 'simon' record only on Simon's word in chat, quoting it. A 'rehearsal' record (the demo's) can only ever authorise a dry run. A later { itemId, withdrawn: true } cancels it. `post` refuses anything without a matching approval, re-runs the claim gate at post time, and calls X only with the owner's keys present AND DRY_RUN=0.",
+  "draftNote": "A draft of the claim-gate kernel existed in a scratch folder when this was sealed; nothing of it is in the repo before this commit. The forgery set below is produced by a fixed mechanical rule from the genuine cards, so it cannot be chosen to suit the kernel."
+ },
+ "genuine": [
+  { "id": "witness-ms", "name": "witness", "claim": "on vercel/ms, ms's own tests killed 15 of 17 mutants; 2 survived — two boundaries those tests never check", "url": "https://sjgant80-hub.github.io/witness/",
+    "receipt": { "repo": "sjgant80-hub/witness", "commit": "5a1ffba13c06eb0e4702f8eb7468bbf53c3281ea", "path": "landing/ms-verdict.json", "sha256": "7bb572c347bfe64f0e9bb62a105a0e0a033c825b71f4fb274b49033b2d4d26e4" },
+    "facts": [ { "path": "summary.killed", "value": 15 }, { "path": "summary.mutants", "value": 17 }, { "path": "summary.survived", "value": 2 } ] },
+  { "id": "kar-controller", "name": "Kar's controller", "claim": "measured against its sealed claims: 6 held and 1 failed, kept on the receipt; the router put 30 of 30 jobs on their sealed tier", "url": "https://sjgant80-hub.github.io/kar-mind/#controller",
+    "receipt": { "repo": "sjgant80-hub/kar-mind", "commit": "3a6c77f4692819d15640f96012d4a5d68aac97cf", "path": "data/controller-run.json", "sha256": "cb09ebe934a2c9dead50a65fbdf2ad9373aa33b0b436d2b71086d7631340a9ed" },
+    "facts": [ { "path": "held", "value": 6 }, { "path": "failed", "value": 1 }, { "path": "verdicts.0.measured", "value": "30 of 30 jobs routed to their sealed tier" } ] },
+  { "id": "churn-book", "name": "A churn pattern book", "claim": "grown with a local 7B model proposing: held-out AUC 0.796 on 720 rows it never saw", "url": "https://sjgant80-hub.github.io/konomi-slm/pattern-books.html",
+    "receipt": { "repo": "sjgant80-hub/konomi-slm", "commit": "1c6b72263a1090528651f7c46486aff71b237e45", "path": "pattern-books/churn.receipt.json", "sha256": "a7d23cca5ee4d49fb314d313e132e5336858944b93037e93c2ad577ce60fb150" },
+    "facts": [ { "path": "heldAuc", "value": 0.795946 }, { "path": "held", "value": 720 }, { "path": "proposer", "value": "qwen2.5:7b" } ] },
+  { "id": "credit-book", "name": "A credit pattern book", "claim": "held-out AUC 0.672 on 720 rows it never saw", "url": "https://sjgant80-hub.github.io/konomi-slm/pattern-books.html",
+    "receipt": { "repo": "sjgant80-hub/konomi-slm", "commit": "2b37b9641d106d037571086944b80b0460074cee", "path": "pattern-books/credit.receipt.json", "sha256": "bd781485bfa3fbd22ea3ea00844a26368541ade609fe5b22e69c277050038fb3" },
+    "facts": [ { "path": "heldAuc", "value": 0.672461 }, { "path": "held", "value": 720 } ] },
+  { "id": "conductor", "name": "The company's conductor", "claim": "measured against its sealed claims: 5 of 7 held; the failures stay on the receipt", "url": "https://github.com/sjgant80-hub/ai-first-company",
+    "receipt": { "repo": "sjgant80-hub/ai-first-company", "commit": "63e3349b1c24375de9819dfabd6e2fff28afc073", "path": "data/step1-conductor-run.json", "sha256": "8d38b60d14b3df854cd45c8c70fa9494d4603ae307707b794a239f2bc8351cb2" },
+    "facts": [ { "path": "held", "value": 5 }, { "path": "of", "value": 7 } ] }
+ ],
+ "failedClaimCard": { "id": "kar-controller-k3", "name": "Kar's controller", "claim": "the frontier only thinks, with no tools", "url": "https://sjgant80-hub.github.io/kar-mind/#controller",
+    "receipt": { "repo": "sjgant80-hub/kar-mind", "commit": "3a6c77f4692819d15640f96012d4a5d68aac97cf", "path": "data/controller-run.json", "sha256": "cb09ebe934a2c9dead50a65fbdf2ad9373aa33b0b436d2b71086d7631340a9ed" },
+    "facts": [ { "path": "verdicts.2.held", "value": false } ] },
+ "forgeryRule": {
+  "note": "Seven forgeries from each genuine card, made mechanically; each must be refused, and for its own reason (the reason text must contain the marker).",
+  "F1": { "make": "in the claim, the last digit of the first number becomes (digit+1) mod 10", "marker": "is not a field of the receipt" },
+  "F2": { "make": "F1, and every fact whose value is a number equal to the original number is set to the new number", "marker": "in the receipt, not" },
+  "F3": { "make": "the first hex character of the pinned sha256 becomes the next one (f to 0)", "marker": "not the file the card pinned" },
+  "F4": { "make": "the commit becomes 'main'", "marker": "full commit" },
+  "F5": { "make": "the claim is prefixed 'the best result yet: '", "marker": "hype" },
+  "F6": { "make": "the claim is suffixed ' — from £49 a month'", "marker": "price" },
+  "F7": { "make": "the claim is suffixed ' — and earn KCC on every run'", "marker": "economy term" }
+ },
+ "claims": [
+  { "id": "V1", "claim": "The 4 cards in the feed today carry no committed receipt: the claim gate refuses all 4, and none of the 4 queued drafts can post.", "pass": "4 of 4 refused and 0 of 4 queued drafts posted or rehearsed" },
+  { "id": "V2", "claim": "The 5 genuine cards, each fetched from GitHub at its pinned commit and re-hashed, pass the claim gate.", "pass": "5 of 5" },
+  { "id": "V3", "claim": "The 35 forgeries are refused, each for its own reason.", "pass": "35 of 35 refused with their marker" },
+  { "id": "V4", "claim": "A fact inside a claim that FAILED is refused (kar-mind's K3).", "pass": "refused, reason names a FAILED claim" },
+  { "id": "V5", "claim": "Nothing goes out without Simon's approval of the exact words. In a sandbox with X replaced by a recorder and fake keys: no approval -> X called 0 times; approved then edited by one character -> 0; a rehearsal approval in live mode -> 0; approval withdrawn -> 0; Simon's approval in a dry run -> 0 calls and one dry-run record of exactly the approved text; Simon's approval in live mode -> exactly 1 call, carrying exactly the approved text.", "pass": "calls 0,0,0,0,0,1 and the texts equal" },
+  { "id": "V6", "claim": "The keys never surface: with fake key values in the environment through every V5 run, nothing the organ writes to its files or prints contains any of them.", "pass": "0 occurrences" }
+ ],
+ "scope": "The gate checks that every number is the receipt's number at a named field, that the receipt is the committed one, and that the claim it cites held. It cannot check that the words around a number describe it fairly — that is what Simon's approval of the exact text is for. The approval record is Kar's record of Simon's word in chat, quoted; it is not a signature by Simon."
+}
