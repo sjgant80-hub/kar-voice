@@ -224,7 +224,7 @@
     </ul>
 
     <h3 id="cost">The cost case — your numbers, sourced figures</h3>
-    <p style="margin:0 0 6px">Put in your own numbers; the case recomputes as you type. It is computed by <code>costcase.mjs</code> (the tested, mutation-gated kernel above) from the sourced basis listed underneath. Floors, not top ends: staff time at the UK median wage with employer on-costs left out. These are your costs; no price of ours appears here.</p>
+    <p style="margin:0 0 6px">Put in your own numbers; the case recomputes as you type. It is computed by <code>costcase.mjs</code> (the tested, mutation-gated kernel above) from the sourced basis listed underneath. Floors, not top ends: staff time at the UK median wage with employer on-costs left out. These are your costs; no price of ours appears here. The starting values are an example to move, not a measurement. The saving is staff time valued at the wage — hours your people get back for other work — not a cash cut unless you choose one.</p>
     <div class="calc" id="calc">
       <label>Proof posts a week <input id="in-postsPerWeek" type="number" min="0" step="1" inputmode="numeric"></label>
       <label>Minutes a person spends writing and checking one post today <input id="in-minutesPerPost" type="number" min="0" step="any" inputmode="decimal"></label>
@@ -242,9 +242,11 @@
     <h3>Security and data protection</h3>
     <ul style="margin:0;padding-left:20px">
       <li><b>It runs on your machine.</b> Plain Node with no third-party packages; there is no server of ours in the path, and nothing phones home.</li>
-      <li><b>Two outbound hosts, both named in the code.</b> The voice fetches receipts from raw.githubusercontent.com at pinned commits, and, only when live, sends the approved text to api.x.com. This page fetches its own files and the same receipts; no analytics, no cookies, no third-party scripts.</li>
+      <li><b>Two outbound hosts, both named in the code.</b> The voice fetches receipts from raw.githubusercontent.com at pinned commits, and, only when live, sends the approved text to api.x.com. This page fetches its own files, the same receipts, and the CI status badge image from github.com; no analytics, no cookies, no third-party scripts.</li>
       <li><b>The keys stay in your environment.</b> Four variables (X_CONSUMER_KEY, X_CONSUMER_SECRET, X_ACCESS_TOKEN, X_ACCESS_SECRET) the owner sets; the code reads them only to sign the request to X. Measured with planted fake keys through every sealed run: <span id="v6">…</span>.</li>
-      <li><b>No personal data is stored.</b> It handles your published receipts and the text of your posts. The approval file records the approver's words and is public in the repo; keep your deployment's repo private if you want those words private.</li>
+      <li><b>Almost no personal data.</b> It handles your published receipts and the text of your posts, and reads no customer or prospect data. The only personal data it keeps is the approver's name and quoted words in the approval file, which is public in this repo; keep your deployment's repo private if you want those words private.</li>
+      <li><b>Cutting it off is one step.</b> Remove the four variables (or regenerate them at X) and nothing can post; <code>node voice.mjs withdraw &lt;id&gt;</code> cancels an approval before it is used.</li>
+      <li><b>Everything is on the record.</b> The queue, the approvals and the ledger are files in git, so every change to them is in the repository's history. It runs on Node.js (the version CI runs is named in <code>.github/workflows/gate.yml</code>).</li>
       <li><b>Tamper-evident by construction.</b> A card pins a full commit and the receipt's SHA-256; a receipt edited after the fact no longer matches and the card is refused. An approval is bound to the SHA-256 of the exact text; one changed character voids it.</li>
       <li><b>It cannot cold-message anyone.</b> That code does not exist in the repo.</li>
     </ul>
@@ -258,9 +260,10 @@
       <li><b>Name the approver</b> (communications lead or founder). Approvals are recorded with their words, one post at a time.</li>
       <li><b>Turn the key when ready.</b> The owner adds the four X variables to the machine's environment and sets DRY_RUN=0; <code>node voice.mjs post &lt;id&gt;</code> posts one approved item.</li>
     </ol>
+    <p style="margin:8px 0 0"><b>A day with it.</b> When new receipts land, someone (or a scheduled task) runs <code>node voice.mjs draft</code>; the approver reads the queue on this page and says yes to exact words; <code>post</code> sends one approved item at a time, and the cap holds it to <span data-f="maxPerDay">…</span> a day. <code>node voice.mjs status</code> shows the counts and whether the keys are present, never the keys.</p>
 
     <h3>Ownership, support and exit</h3>
-    <p style="margin:0 0 8px"><b>Supplied by AI Native Solutions</b> — start at <a href="https://www.ai-nativesolutions.com">ai-nativesolutions.com</a> and get in touch through that site. Support, service levels, warranty and liability are agreed per deployment. MIT: no licence fee, you own your copy, and it keeps running without us. Exit is keeping your fork; there is no account to close and no data held by us.</p>
+    <p style="margin:0 0 8px"><b>Supplied by AI Native Solutions</b> — start at <a href="https://www.ai-nativesolutions.com">ai-nativesolutions.com</a> and get in touch through that site. Support, service levels, warranty and liability are agreed per deployment. <a href="https://github.com/sjgant80-hub/kar-voice/blob/main/LICENSE">MIT</a>: no licence fee, you own your copy, and it keeps running without us. Exit is keeping your fork; there is no account to close and no data held by us.</p>
 
     <h3>Risks, straight</h3>
     <ul style="margin:0;padding-left:20px">
@@ -269,6 +272,8 @@
       <li><b>Receipts must be public.</b> The gate fetches them from GitHub so anyone can re-fetch them; a private result cannot be cited.</li>
       <li><b>It can refuse a fair post.</b> A post too like an earlier one is refused (X refuses them too) — reword it or let it wait. A claim whose receipt failed is refused even if the number is right.</li>
       <li><b>X sets the terms.</b> If X changes its rules, prices or API, posting may stop; the drafting, the gates, this page and the ledger keep working.</li>
+      <li><b>An approval is a record, not a signature.</b> Kar writes it on the approver's word, quoted; whoever can write to the machine or the repo could add one. Guard the approval file like the keys: the same people should hold both.</li>
+      <li><b>No third-party certification is claimed.</b> The evidence is the source itself, the mutation gate that runs on every push, and the sealed measurement with its failure kept.</li>
       <li><b>It has not posted live yet.</b> The ledger above shows rehearsals only until the owner adds the keys. Its evidence today is the sealed measurement, failure included.</li>
     </ul>
 
