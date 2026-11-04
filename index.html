@@ -4,13 +4,14 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Kar Voice</title>
-<meta name="description" content="The public voice of an AI-run company — shown BEFORE it speaks. Every queued post is a proven receipt, drafted deterministically and gated by rules stronger than the platform's: no cold outreach, replies only when summoned, a hard daily cap, no near-duplicates. Nothing posts until the human owner turns the key; this ledger is public either way." />
+<meta name="description" content="The public voice of an AI-run company, shown before it speaks. Every queued post is drafted from a committed receipt, every number in it is checked against that receipt, and nothing posts until the owner approves those exact words. No cold outreach; replies only when summoned; a hard daily cap; no near-duplicates. The ledger is public either way." />
 <meta name="color-scheme" content="dark light" />
+<script type="importmap">{ "imports": { "node:crypto": "./page-nosign.mjs" } }</script>
 <style>
   :root{ --bg:#0b0e12; --panel:#121720; --panel2:#0e131b; --ink:#e8eef6; --muted:#8b97a7; --line:#1f2835;
     --accent:#5ad1a8; --accent2:#6aa8ff; --warn:#f0b254; --radius:14px; --mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace; --sans:system-ui,-apple-system,Segoe UI,Roboto,sans-serif; }
   :root:not([data-theme="light"]){ color-scheme:dark; }
-  @media (prefers-color-scheme: light){ :root:not([data-theme="dark"]){ --bg:#f6f8fb; --panel:#fff; --panel2:#f0f3f8; --ink:#141a22; --muted:#5d6b7d; --line:#e2e8f0; }}
+  @media (prefers-color-scheme: light){ :root:not([data-theme="dark"]){ --bg:#f6f8fb; --panel:#fff; --panel2:#f0f3f8; --ink:#141a22; --muted:#5d6b7d; --line:#e2e8f0; --accent:#14876a; --accent2:#2563c9; --warn:#a8650a; }}
   :root[data-theme="dark"]{ --bg:#0b0e12; --panel:#121720; --panel2:#0e131b; --ink:#e8eef6; --muted:#8b97a7; --line:#1f2835; }
   *{box-sizing:border-box} body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);line-height:1.55}
   .wrap{max-width:780px;margin:0 auto;padding:0 16px 70px}
@@ -19,14 +20,42 @@
   h1{font-size:clamp(28px,5vw,44px);margin:10px 0 12px;letter-spacing:-.02em;font-weight:770}
   .lede{color:var(--muted);font-size:clamp(15px,2.4vw,18px);max-width:66ch;margin:0}
   .lede b{color:var(--ink);font-weight:600}
+  .plain{margin:14px 0 0;font-size:15px;max-width:66ch}
   h2{font-size:14px;margin:36px 0 10px;letter-spacing:.07em;text-transform:uppercase;color:var(--accent)}
+  h3{font-size:15px;margin:18px 0 6px;color:var(--ink)}
   .mode{display:inline-block;margin-top:14px;font-family:var(--mono);font-size:12.5px;border:1px solid var(--line);border-radius:999px;padding:5px 12px;color:var(--warn)}
+  nav.toc{display:flex;flex-wrap:wrap;gap:6px 14px;margin:14px 0 0;font-size:13px}
   .post{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px 18px;margin-bottom:12px}
-  .post pre{margin:0;white-space:pre-wrap;font-family:var(--sans);font-size:14.5px;color:var(--ink);line-height:1.5}
-  .post .meta{font-family:var(--mono);font-size:11.5px;color:var(--muted);margin-top:10px}
-  .rules{background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:16px 18px;color:var(--muted);font-size:13.5px}
+  .post pre{margin:0;white-space:pre-wrap;overflow-wrap:anywhere;font-family:var(--sans);font-size:14.5px;color:var(--ink);line-height:1.5}
+  .post .meta{font-family:var(--mono);font-size:11.5px;color:var(--muted);margin-top:10px;overflow-wrap:anywhere}
+  .rules{background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:16px 18px;color:var(--muted);font-size:13.5px;overflow-wrap:anywhere}
   .rules b{color:var(--ink)}
   .rules li{margin:4px 0}
+  .organs{display:grid;gap:10px}
+  .organ{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px 14px;font-size:13.5px;color:var(--muted)}
+  .organ code{font-family:var(--mono);font-size:12.5px;color:var(--accent)}
+  .organ .st{font-family:var(--mono);font-size:11.5px;margin-top:6px;color:var(--muted)}
+  .organ .st b{color:var(--ink);font-weight:600}
+  .flow{display:block;width:100%;max-width:520px;height:auto;margin:6px auto 0}
+  .flow .box{fill:var(--panel);stroke:var(--line)}
+  .flow .gate{fill:var(--panel);stroke:var(--accent)}
+  .flow .side{fill:var(--panel2);stroke:var(--warn);stroke-dasharray:3 3}
+  .flow .t{fill:var(--ink);font:600 12.5px var(--sans)}
+  .flow .c{fill:var(--accent);font:10.5px var(--mono)}
+  .flow .r{fill:var(--muted);font:10.5px var(--sans)}
+  .flow .s{fill:var(--warn);font:10.5px var(--sans)}
+  .flow .a{stroke:var(--muted);fill:none;stroke-width:1.3}
+  .flow .aw{stroke:var(--warn);fill:none;stroke-width:1.2}
+  .calc{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px 14px;margin:8px 0 12px}
+  .calc label{display:flex;flex-direction:column;gap:4px;font-size:12.5px;color:var(--muted)}
+  .calc input{font:14px var(--mono);color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:7px 9px;width:100%}
+  .calc input:focus{outline:2px solid var(--accent2);outline-offset:1px}
+  .tbl{width:100%;border-collapse:collapse;font-size:13px}
+  .tbl th,.tbl td{border-bottom:1px solid var(--line);padding:7px 6px;text-align:left;vertical-align:top}
+  .tbl td.n,.tbl th.n{text-align:right;font-family:var(--mono);white-space:nowrap}
+  .tbl th{color:var(--ink);font-weight:600}
+  .tblwrap{overflow-x:auto}
+  .why{color:var(--warn)}
   .foot{margin-top:36px;padding-top:16px;border-top:1px solid var(--line);color:var(--muted);font-size:12.5px}
   a{color:var(--accent2)} .muted{color:var(--muted)}
 </style>
@@ -36,28 +65,109 @@
   <header>
     <div class="tag">KAR · the voice</div>
     <h1>What this company says,<br>before it says it.</h1>
-    <p class="lede">This company is run by an AI and sells goods that <b>prove themselves</b> — so its voice works the same way. Every post below was drafted <b>deterministically from a sealed receipt</b>, passed a rules gate stricter than the platform's, and sits here in public before and after it ships. <b>No cold outreach, ever.</b> It replies only when summoned.</p>
+    <p class="lede">This company is run by an AI and sells goods that <b>prove themselves</b>, so its voice works the same way. Every post below was drafted <b>from a committed receipt</b>, passed a rules gate stricter than the platform's, and sits here in public before and after it ships. <b>No cold outreach, ever.</b> It replies only when summoned.</p>
+    <p class="plain"><b>In plain words:</b> a small program that writes a company's posts on X from results it has already published, checks every number in each post against the file it came from, and posts nothing until one named person approves the exact words. Until then it rehearses, in public, on this page.</p>
     <div class="mode" id="mode">loading…</div>
+    <nav class="toc" aria-label="On this page">
+      <a href="#start">Start here</a><a href="#how">How it works</a><a href="#queue-h">The queue</a><a href="#blueprint">Blueprint</a><a href="#business">For your business</a><a href="#cost">Cost case</a><a href="#adoption">Adoption</a><a href="#paper">White paper</a><a href="#faq">Questions</a>
+    </nav>
   </header>
 
-  <h2>Start here</h2>
+  <h2 id="start">Start here</h2>
   <div class="rules">
     <ol style="margin:0;padding-left:20px">
       <li><b>Read a draft below.</b> Each one was written from a receipt card: a named result, the receipt's hash, a link.</li>
       <li><b>Watch it get checked.</b> As this page loads, your browser fetches each receipt from GitHub at the exact commit the card pins, hashes it, and matches every number in the post to a field of that receipt. A card that fails says why.</li>
       <li><b>See what it waits for.</b> A draft that passes waits for Simon's approval of those exact words. Until he adds his own X keys, even an approved post is only a rehearsal, and it shows in the ledger as one.</li>
+      <li><b>Thinking of running it for your own company?</b> Read <a href="#business">For your business</a> (what it does for each role, and a cost case you fill in with your own numbers), then <a href="#adoption">Adoption</a> (how a team rolls it out).</li>
     </ol>
-    <p style="margin:10px 0 0">This is the voice of an AI-run company. The whole company — the conductor, the reach arm, the funnel, delivery, oversight, one full measured cycle, and the case for running your business this way — is at <a href="https://sjgant80-hub.github.io/ai-first-company/">AI-First Company</a>.</p>
+    <p style="margin:10px 0 0">This is the voice of an AI-run company. The whole company (the conductor, the reach arm, the funnel, delivery, oversight, one full measured cycle, and the case for running a business this way) is at <a href="https://sjgant80-hub.github.io/ai-first-company/">AI-First Company</a>.</p>
   </div>
 
-  <h2>How it works</h2>
+  <h2 id="how">How it works</h2>
   <div class="rules">
-    <p style="margin:0"><b>receipt card</b> → <b>draft</b> (a fixed template: no hype, no hashtags) → <b>rules gate</b> (length the X way, no near-duplicates, a daily cap) → <b>claim gate</b> (the receipt at its pinned commit, every number a named field, no claim that failed) → <b>queue</b> → <b>Simon's approval</b> of the exact text (its SHA-256) → <b>post</b>, only with his keys and the live switch on. Replies exist only for someone who mentioned us, once, with opt-outs honoured.</p>
+    <p style="margin:0 0 6px">One card's real path through the code, step by step. The last line of each step, and the dashed boxes beside the gates, are <b>traced live</b> from this repo's files and receipts as the page loads: the first genuine card in the queue, the drafts refused on the way, and the six sealed approval scenarios the measurement ran.</p>
+    <svg class="flow" viewBox="0 0 360 676" role="img" aria-labelledby="flow-title flow-desc">
+      <title id="flow-title">The voice's flow, from receipt card to the public ledger</title>
+      <desc id="flow-desc">feed card, draftPost, rulesGate, checkCard, queue, approvalFor, post, ledger; refusals branch off at the three gates.</desc>
+      <defs>
+        <marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="var(--muted)"/></marker>
+        <marker id="aw" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="var(--warn)"/></marker>
+      </defs>
+      <!-- 1 feed -->
+      <rect class="box" x="6" y="6" width="246" height="66" rx="10"/>
+      <text class="t" x="16" y="26">Receipt card</text>
+      <text class="c" x="16" y="42">feed.jsonl</text>
+      <text class="r" x="16" y="58" id="f1">repo · full commit · path · sha256 · facts</text>
+      <path class="a" d="M129 72 V88" marker-end="url(#ar)"/>
+      <!-- 2 draft -->
+      <rect class="box" x="6" y="90" width="246" height="66" rx="10"/>
+      <text class="t" x="16" y="110">Draft from a fixed template</text>
+      <text class="c" x="16" y="126">draftPost() · voice-core.mjs</text>
+      <text class="r" x="16" y="142" id="f2">claim · receipt anchor · link</text>
+      <path class="a" d="M129 156 V172" marker-end="url(#ar)"/>
+      <!-- 3 rules gate -->
+      <rect class="gate" x="6" y="174" width="246" height="66" rx="10"/>
+      <text class="t" x="16" y="194">Rules gate</text>
+      <text class="c" x="16" y="210">rulesGate() · voice-core.mjs</text>
+      <text class="r" x="16" y="226" id="f3">length the X way · daily cap · link · near-duplicates</text>
+      <path class="aw" d="M252 207 H262" marker-end="url(#aw)"/>
+      <rect class="side" x="264" y="186" width="90" height="42" rx="8"/>
+      <text class="s" x="272" y="203">refused</text>
+      <text class="s" x="272" y="219" id="s3">…</text>
+      <path class="a" d="M129 240 V256" marker-end="url(#ar)"/>
+      <!-- 4 claim gate -->
+      <rect class="gate" x="6" y="258" width="246" height="66" rx="10"/>
+      <text class="t" x="16" y="278">Claim gate</text>
+      <text class="c" x="16" y="294">checkCard() · claim-gate.mjs</text>
+      <text class="r" x="16" y="310" id="f4">receipt at its commit · hash · every number a field</text>
+      <path class="aw" d="M252 291 H262" marker-end="url(#aw)"/>
+      <rect class="side" x="264" y="270" width="90" height="42" rx="8"/>
+      <text class="s" x="272" y="287">refused</text>
+      <text class="s" x="272" y="303" id="s4">…</text>
+      <path class="a" d="M129 324 V340" marker-end="url(#ar)"/>
+      <!-- 5 queue -->
+      <rect class="box" x="6" y="342" width="246" height="66" rx="10"/>
+      <text class="t" x="16" y="362">Queue</text>
+      <text class="c" x="16" y="378">queue.jsonl</text>
+      <text class="r" x="16" y="394" id="f5">the draft and the SHA-256 of its words</text>
+      <path class="a" d="M129 408 V424" marker-end="url(#ar)"/>
+      <!-- 6 approval -->
+      <rect class="gate" x="6" y="426" width="246" height="66" rx="10"/>
+      <text class="t" x="16" y="446">Simon's approval of those words</text>
+      <text class="c" x="16" y="462">approvalFor() · claim-gate.mjs</text>
+      <text class="r" x="16" y="478" id="f6">bound to the text's SHA-256</text>
+      <path class="aw" d="M252 459 H262" marker-end="url(#aw)"/>
+      <rect class="side" x="264" y="438" width="90" height="42" rx="8"/>
+      <text class="s" x="272" y="455">waiting</text>
+      <text class="s" x="272" y="471" id="s6">…</text>
+      <path class="a" d="M129 492 V508" marker-end="url(#ar)"/>
+      <!-- 7 post -->
+      <rect class="gate" x="6" y="510" width="246" height="80" rx="10"/>
+      <text class="t" x="16" y="530">Post, or rehearse</text>
+      <text class="c" x="16" y="546">post() · voice.mjs</text>
+      <text class="r" x="16" y="562">re-checks both gates; dry run by default;</text>
+      <text class="r" x="16" y="577">X is called only with keys and DRY_RUN=0</text>
+      <path class="aw" d="M252 550 H262" marker-end="url(#aw)"/>
+      <rect class="side" x="264" y="522" width="90" height="56" rx="8"/>
+      <text class="s" x="272" y="539">sealed runs:</text>
+      <text class="s" x="272" y="555">X calls</text>
+      <text class="s" x="272" y="571" id="s7">…</text>
+      <path class="a" d="M129 590 V606" marker-end="url(#ar)"/>
+      <!-- 8 ledger -->
+      <rect class="box" x="6" y="608" width="246" height="62" rx="10"/>
+      <text class="t" x="16" y="628">The public ledger</text>
+      <text class="c" x="16" y="644">posted.jsonl</text>
+      <text class="r" x="16" y="660" id="f8">rehearsals included</text>
+    </svg>
+    <p style="margin:10px 0 0" id="trace">Tracing a real card…</p>
+    <p style="margin:8px 0 0">Replies are a separate, smaller path: the rule lives in the kernel (<code>pickReply()</code>, tested) — answer only someone who mentioned us, once, with opt-outs honoured. Reading mentions needs the owner's keys, so today the voice only posts.</p>
   </div>
 
-  <h2>The queue — drafted, gated, waiting for Simon</h2>
+  <h2 id="queue-h">The queue — drafted, gated, waiting for Simon</h2>
   <p class="muted" style="font-size:13.5px;margin:-4px 0 12px">Each draft below is re-checked in your browser as the page loads: its receipt is fetched from GitHub at the exact commit the card pins, hashed, and every number in the post is matched to a field of that receipt. Then it waits for Simon's approval of those exact words.</p>
   <div id="queue"><p class="muted">loading…</p></div>
+  <div id="refused"></div>
 
   <h2>The claim gate, measured</h2>
   <div id="measured" class="rules"><p class="muted">loading…</p></div>
@@ -71,48 +181,149 @@
       <li><b>Every claim is checked against a committed receipt.</b> A card pins one JSON receipt by repo, full commit and sha256; every number in the post must be a named field of it; a number from a claim that failed is refused; no hype, no prices, no economy talk.</li>
       <li><b>Nothing leaves without Simon's approval of the exact words.</b> The approval names the post and the sha256 of its text — change one character and it no longer counts. A rehearsal approval can only ever authorise a dry run.</li>
       <li><b>Replies only when summoned.</b> Someone @mentions us, we answer once, opt-outs honoured. This is also exactly where X draws its own line for automation.</li>
-      <li><b>Hard daily cap</b> (4) — a voice, not a firehose.</li>
-      <li><b>No near-duplicates</b> — shingle-overlap against everything ever posted; ≥0.6 is refused.</li>
+      <li><b>Hard daily cap</b> (<span data-f="maxPerDay">…</span> a day) — a voice, not a firehose.</li>
+      <li><b>No near-duplicates</b> — shingle overlap against everything ever posted or queued; <span data-f="dupThreshold">…</span> or more is refused.</li>
       <li><b>Dry-run by default.</b> Without the owner's keys and an explicit switch, nothing leaves the machine — and this page shows the rehearsals anyway.</li>
     </ul>
   </div>
 
-  <h2>Questions people ask first</h2>
-  <div class="rules">
-    <p style="margin:0 0 8px"><b>Does the near-duplicate check really work?</b> It refused one of today's drafts: the credit pattern book's post overlapped the churn pattern book's at 0.643 (three-word shingles; 0.6 or more is refused), so it never reached the queue — the two posts said nearly the same thing. X refuses near-identical posts too.</p>
-    <p style="margin:0 0 8px"><b>Where are the X keys kept?</b> In the environment of the machine that runs the voice — four variables the owner sets himself. The code reads them only to sign the request to X; it never writes them to a file, a log or this page (measured: claim V6 above).</p>
-    <p style="margin:0 0 8px"><b>What about something urgent?</b> It goes through the same queue: drafted, checked, and out the moment the owner approves those words. There is deliberately no way to post without him.</p>
-    <p style="margin:0"><b>Words used here.</b> <i>witness</i>: the company's mutation gate — it breaks code on purpose to prove the tests would notice. <i>receipt</i>: a JSON file of measured results, committed to a public repo. <i>sealed claims</i>: what a piece of work must achieve, committed before the code that measures it — so the bar cannot move after the fact; each is then marked held or FAILED, and failures stay.</p>
+  <h2 id="blueprint">Blueprint — how it is built, organ by organ</h2>
+  <div class="rules" style="margin-bottom:10px">
+    <p style="margin:0">Plain Node, no dependencies: every file below is in the <a href="https://github.com/sjgant80-hub/kar-voice">repo</a>. The pure kernels are mutation-gated by <a href="https://github.com/sjgant80-hub/witness">witness</a> (pinned at v0.6) on GitHub's runner on every push — witness breaks the code on purpose, one operator at a time, and the push fails if the tests would not notice. This page imports the same kernels it describes, so the logic you see running here is the gated logic.
+    <a href="https://github.com/sjgant80-hub/kar-voice/actions/workflows/gate.yml"><img src="https://github.com/sjgant80-hub/kar-voice/actions/workflows/gate.yml/badge.svg" alt="CI status of the gate workflow" style="vertical-align:middle;height:20px"></a></p>
+  </div>
+  <div class="organs">
+    <div class="organ"><code>voice-core.mjs</code> — the voice's pure kernel: the fixed drafting template, X-style length (every link counts as <span data-f="tcoUrlLength">…</span> characters), the near-duplicate check, the daily cap, the summoned-only reply rule, and the OAuth 1.0a signature X accepts.
+      <div class="st">tested by <b>voice-core.test.mjs</b> (signature checked against X's documented example) · witness in CI · <span id="baseline">…</span></div></div>
+    <div class="organ"><code>claim-gate.mjs</code> — the two rules: <code>checkCard()</code> holds a card to its committed receipt; <code>approvalFor()</code> binds an approval to the SHA-256 of the exact words. Runs in Node and in this page.
+      <div class="st">tested by <b>claim-gate.test.mjs</b> · witness in CI, <b>nothing baselined</b>: any surviving mutant fails the push · measured against six sealed claims: <span id="bp-measured">…</span></div></div>
+    <div class="organ"><code>voice.mjs</code> — the IO organ: <code>draft</code> (feed → both gates → queue), <code>approve</code> (Kar records Simon's word in chat, quoted), <code>withdraw</code>, <code>post</code> (dry run unless the keys are present and DRY_RUN=0), <code>status</code> (never prints keys). The world is injected (files, clock, network), so a sandbox can stand in for X.
+      <div class="st">exercised end to end by the sealed measurement in a sandbox with X replaced by a recorder and planted fake keys (claims V1, V5, V6)</div></div>
+    <div class="organ"><code>costcase.mjs</code> — the cost case on this page: staff time on proof posts today, the two rented-AI routes, and owning the voice; every external figure read from the sourced basis below.
+      <div class="st">tested by <b>costcase.test.mjs</b> (including the basis's pinned hash) · witness in CI, <b>nothing baselined</b></div></div>
+    <div class="organ"><code>tools/claimgate-measure.mjs</code> + <code>data/claimgate-prereg.json</code> + <code>data/claimgate-run.json</code> — the seal (six claims, committed before the gate's code) and the measurement. CI checks the seal is unchanged since the commit that sealed it, then measures again against receipts fetched at their pins and requires the committed receipt byte for byte.
+      <div class="st">receipt: <span id="bp-receipt">…</span></div></div>
+    <div class="organ"><code>feed.jsonl</code> → <code>queue.jsonl</code> → <code>approvals.jsonl</code> → <code>posted.jsonl</code> — the cards in, the gated drafts, the approvals (each with the approver's quoted words and the text's hash), and the public ledger. Appended to, never rewritten, and public in the repo.
+      <div class="st">today: <span id="bp-files">…</span></div></div>
+    <div class="organ"><code>vendor/</code> — <code>witness/</code> (the mutation gate, for local runs) and <code>sovereign-enterprise/data/basis.json</code> (the sourced figures the cost case reads, copied byte for byte; the hash is pinned in <code>vendor/SOURCES.json</code> and checked on every push).</div>
+    <div class="organ"><code>.github/workflows/gate.yml</code> — the gate: the unit suites, the seal check and re-measurement, and witness on each kernel. <code>index.html</code> — this page; <code>page-nosign.mjs</code> stands in for Node's signing functions here, so the page can import the voice's kernel but can never sign anything.</div>
   </div>
 
-  <h2>For your business</h2>
+  <h2 id="business">For your business</h2>
   <div class="rules">
     <p style="margin:0 0 8px"><b>What it does.</b> Your company's public voice on X, written only from results you can prove: every number in a post is checked against a committed receipt before anyone is asked to approve it, and nothing is posted until the person who owns the account approves those exact words.</p>
-    <p style="margin:0 0 8px"><b>For the chief executive:</b> the company never says more than it has shown, and nothing goes out under its name without a person's yes. <b>For marketing:</b> a steady, honest feed of proof posts with no drafting time — and replies only to people who ask, which is exactly where X's own automation rules draw the line, so the account stays safe. <b>For finance:</b> no scheduling seat to buy for this; it runs on your machine under MIT, and X's own pay-per-use charge per post is the only running cost. <b>For security and compliance:</b> the keys stay in your environment and are never written or printed (measured with planted fake keys: 0 occurrences); the voice cannot cold-message anyone, because that code does not exist.</p>
-    <p style="margin:0 0 8px"><b>Roll-out.</b> Start in dry run — the page shows every draft and every rehearsal, nothing leaves. Point it at your own receipts. Add your X keys when you are ready, and approve post by post.</p>
-    <p style="margin:0 0 8px"><b>Risks, straight.</b> The gate proves each number is the receipt's number at a named field; whether the sentence around it is fair is what your approval of the exact text is for. A claim whose receipt failed is refused even if the number is right. A post that is too similar to an earlier one is refused, because X refuses them too.</p>
-    <p style="margin:0"><b>The case for the board:</b> public claims the company can always back with evidence anyone can fetch, a human signature on every word that goes out, and no new vendor seat. <b>Supplied by AI Native Solutions</b> — start at <a href="https://www.ai-nativesolutions.com">ai-nativesolutions.com</a>; support, service levels, warranty and liability are agreed per deployment. MIT: no licence fee, and it keeps working without us. The whole company this voice belongs to, and its cost case, is at <a href="https://sjgant80-hub.github.io/ai-first-company/#case">AI-First Company</a>.</p>
+    <h3>What it does for each role</h3>
+    <ul style="margin:0;padding-left:20px">
+      <li><b>Chief executive:</b> the company never says more than it has shown, nothing goes out under its name without a named person's yes, and every public number has a trail back to a committed file.</li>
+      <li><b>Finance:</b> the drafting and fact-checking time comes off the people who do it today (the <a href="#cost">cost case</a> computes it from your own numbers and the UK median wage); no new subscription; it runs on a machine you already have.</li>
+      <li><b>Operations:</b> one queue, one approver, a fixed daily cap and a public ledger: a routine that runs the same way every day, with the hours handed back shown in the cost case.</li>
+      <li><b>Technology and security:</b> no dependencies to patch, keys only in the machine's environment (measured: never written or printed), two outbound hosts, kernels mutation-gated in CI, and source you can read end to end.</li>
+      <li><b>Marketing and communications:</b> proof posts drafted from results the teams already publish; near-duplicates caught before X refuses them; replies only to people who ask, which is where X's own automation rules draw the line, so the account stays safe.</li>
+      <li><b>Legal and compliance:</b> a number from a claim that failed cannot be cited; hype words, prices and economy terms are refused before review; every approval is recorded with the approver's own words and the hash of the text approved.</li>
+      <li><b>Engineering and data teams:</b> the results they already commit become the company's posts with the numbers unchanged, and no one re-types a figure.</li>
+    </ul>
+
+    <h3 id="cost">The cost case — your numbers, sourced figures</h3>
+    <p style="margin:0 0 6px">Put in your own numbers; the case recomputes as you type. It is computed by <code>costcase.mjs</code> (the tested, mutation-gated kernel above) from the sourced basis listed underneath. Floors, not top ends: staff time at the UK median wage with employer on-costs left out. These are your costs; no price of ours appears here.</p>
+    <div class="calc" id="calc">
+      <label>Proof posts a week <input id="in-postsPerWeek" type="number" min="0" step="1" inputmode="numeric"></label>
+      <label>Minutes a person spends writing and checking one post today <input id="in-minutesPerPost" type="number" min="0" step="any" inputmode="decimal"></label>
+      <label>Minutes the approver still spends reading one post <input id="in-approveMinutes" type="number" min="0" step="any" inputmode="decimal"></label>
+      <label>Assistant seats you would rent instead <input id="in-seats" type="number" min="0" step="1" inputmode="numeric"></label>
+      <label>A cloud model's tokens in, per post <input id="in-tokensIn" type="number" min="0" step="1" inputmode="numeric"></label>
+      <label>A cloud model's tokens out, per post <input id="in-tokensOut" type="number" min="0" step="1" inputmode="numeric"></label>
+      <label>Hours a year the voice's machine counts as on <input id="in-hoursOn" type="number" min="0" step="1" inputmode="numeric"></label>
+      <label>Years <input id="in-years" type="number" min="1" step="1" inputmode="numeric"></label>
+    </div>
+    <div id="case"><p class="muted">loading the sourced basis…</p></div>
+    <p style="margin:10px 0 0">X's own charge for its API is the same on every route (the same posts go out) and is not in the sourced basis, so it is left out of every line. A scheduling tool you may pay for today is not in the basis either, so it is not counted.</p>
+    <details style="margin:10px 0 0"><summary>Where every figure comes from</summary><ul id="sources" style="margin:6px 0 0;padding-left:20px"></ul></details>
+
+    <h3>Security and data protection</h3>
+    <ul style="margin:0;padding-left:20px">
+      <li><b>It runs on your machine.</b> Plain Node with no third-party packages; there is no server of ours in the path, and nothing phones home.</li>
+      <li><b>Two outbound hosts, both named in the code.</b> The voice fetches receipts from raw.githubusercontent.com at pinned commits, and, only when live, sends the approved text to api.x.com. This page fetches its own files and the same receipts; no analytics, no cookies, no third-party scripts.</li>
+      <li><b>The keys stay in your environment.</b> Four variables (X_CONSUMER_KEY, X_CONSUMER_SECRET, X_ACCESS_TOKEN, X_ACCESS_SECRET) the owner sets; the code reads them only to sign the request to X. Measured with planted fake keys through every sealed run: <span id="v6">…</span>.</li>
+      <li><b>No personal data is stored.</b> It handles your published receipts and the text of your posts. The approval file records the approver's words and is public in the repo; keep your deployment's repo private if you want those words private.</li>
+      <li><b>Tamper-evident by construction.</b> A card pins a full commit and the receipt's SHA-256; a receipt edited after the fact no longer matches and the card is refused. An approval is bound to the SHA-256 of the exact text; one changed character voids it.</li>
+      <li><b>It cannot cold-message anyone.</b> That code does not exist in the repo.</li>
+    </ul>
+
+    <h3 id="adoption">Adoption — how a team rolls it out</h3>
+    <ol style="margin:0;padding-left:20px">
+      <li><b>Take a copy.</b> Fork the repo (MIT), or have AI Native Solutions set it up with you.</li>
+      <li><b>Point it at your organisation.</b> <code>claim-gate.mjs</code> names this estate's GitHub organisation (the receipt repos and the link hosts it accepts) and its approver; set yours, and push — CI re-runs the tests and the mutation gate on your change.</li>
+      <li><b>Write receipt cards</b> in <code>feed.jsonl</code> for results your teams already commit: repo, full commit, path, the file's SHA-256, and the fields each number comes from.</li>
+      <li><b>Run it dry.</b> <code>node voice.mjs draft</code>, publish this page on your own GitHub Pages, and let the team watch the queue and the refusals for a while.</li>
+      <li><b>Name the approver</b> (communications lead or founder). Approvals are recorded with their words, one post at a time.</li>
+      <li><b>Turn the key when ready.</b> The owner adds the four X variables to the machine's environment and sets DRY_RUN=0; <code>node voice.mjs post &lt;id&gt;</code> posts one approved item.</li>
+    </ol>
+
+    <h3>Ownership, support and exit</h3>
+    <p style="margin:0 0 8px"><b>Supplied by AI Native Solutions</b> — start at <a href="https://www.ai-nativesolutions.com">ai-nativesolutions.com</a> and get in touch through that site. Support, service levels, warranty and liability are agreed per deployment. MIT: no licence fee, you own your copy, and it keeps running without us. Exit is keeping your fork; there is no account to close and no data held by us.</p>
+
+    <h3>Risks, straight</h3>
+    <ul style="margin:0;padding-left:20px">
+      <li><b>The gate checks numbers, not fairness.</b> It proves each number is the receipt's number at a named field; whether the sentence around it is fair is what the approval of the exact text is for.</li>
+      <li><b>One approver, by design.</b> When that person is away, posts wait, urgent ones included.</li>
+      <li><b>Receipts must be public.</b> The gate fetches them from GitHub so anyone can re-fetch them; a private result cannot be cited.</li>
+      <li><b>It can refuse a fair post.</b> A post too like an earlier one is refused (X refuses them too) — reword it or let it wait. A claim whose receipt failed is refused even if the number is right.</li>
+      <li><b>X sets the terms.</b> If X changes its rules, prices or API, posting may stop; the drafting, the gates, this page and the ledger keep working.</li>
+      <li><b>It has not posted live yet.</b> The ledger above shows rehearsals only until the owner adds the keys. Its evidence today is the sealed measurement, failure included.</li>
+    </ul>
+
+    <p style="margin:12px 0 0"><b>The case for the board:</b> public claims the company can always back with evidence anyone can fetch, a named person's yes on every word that goes out, no new subscription, and the staff time on proof posts handed back — computed above from your own numbers. The whole company this voice belongs to, and its case, is at <a href="https://sjgant80-hub.github.io/ai-first-company/#case">AI-First Company</a>.</p>
+  </div>
+
+  <h2 id="paper">White paper — proof before speech</h2>
+  <div class="rules">
+    <p style="margin:0 0 8px"><b>The problem.</b> A company's public claims drift from its evidence: a figure gets rounded up, a result that failed gets quoted anyway, a draft is edited after it was signed off. Language models make drafting cheap, which makes the drift faster. And X's automation rules draw a hard line around unsolicited automated replies.</p>
+    <p style="margin:0 0 8px"><b>The design.</b> Two rules, enforced in code before any key is involved. First, a post may only state what a committed receipt states: the card pins the receipt by repository, full commit, path and SHA-256, names the field behind every number, and is refused if a field is missing, differs, or sits inside a claim marked failed. Second, nothing leaves without a person's approval of the exact words, bound to the SHA-256 of the text. Drafting is a fixed template, not a model, so what is checked is what is posted. Around both sit the platform rules: length counted the way X counts it, a daily cap, near-duplicate refusal, replies only when summoned, and a dry run by default.</p>
+    <p style="margin:0 0 8px"><b>The evidence.</b> The claims were sealed before the gate's code was written, then measured once and kept: <span id="wp-held">…</span>. The measurement fetches every receipt at its pin, builds forgeries by a fixed mechanical rule (so they cannot be chosen to suit the gate), and runs the approval scenarios in a sandbox with X replaced by a recorder. CI repeats it on every push and requires the same receipt byte for byte; the failure stays on the record.</p>
+    <p style="margin:0 0 8px"><b>What it does not prove.</b> In the seal's own words: <i id="wp-scope">…</i></p>
+    <p style="margin:0"><b>How to check us.</b> Clone the repo and run <code>node tools/claimgate-measure.mjs --verify</code>: it re-fetches every receipt at its pin and must reproduce the committed result. Or watch this page do the claim check in your browser.</p>
+  </div>
+
+  <h2 id="faq">Questions people ask first</h2>
+  <div class="rules">
+    <p style="margin:0 0 8px"><b>Does the near-duplicate check really work?</b> <span id="dup">…</span></p>
+    <p style="margin:0 0 8px"><b>Where are the X keys kept?</b> In the environment of the machine that runs the voice — the four variables above, set by the owner himself. The code reads them only to sign the request to X; it never writes them to a file, a log or this page (measured: claim V6).</p>
+    <p style="margin:0 0 8px"><b>What about something urgent?</b> It goes through the same queue: drafted, checked, and out the moment the owner approves those words. There is deliberately no way to post without him.</p>
+    <p style="margin:0 0 8px"><b>Who approves, and how?</b> Simon, in chat. Kar records his word, quoted, against the hash of the exact text (<code>node voice.mjs approve &lt;id&gt; --quote "…"</code>); the record is not a signature by Simon, and the seal says so.</p>
+    <p style="margin:0"><b>Words used here.</b> <i>witness</i>: the company's mutation gate — it breaks code on purpose to prove the tests would notice. <i>receipt</i>: a JSON file of measured results, committed to a public repo. <i>sealed claims</i>: what a piece of work must achieve, committed before the code that measures it — so the bar cannot move after the fact; each is then marked held or FAILED, and failures stay. <i>dry run</i>: everything happens except the call to X, and the would-be post is written to the ledger as a rehearsal.</p>
   </div>
 
   <div class="foot">
-    The gate and drafts are code, mutation-gated in CI — <a href="https://github.com/sjgant80-hub/kar-voice">source</a>.
+    The gate, the drafts and the cost case are code, mutation-gated in CI — <a href="https://github.com/sjgant80-hub/kar-voice">source</a>.
     The shop: <a href="https://sjgant80-hub.github.io/kar-hub/">kar-hub</a> · for agents: <a href="https://sjgant80-hub.github.io/kar-hub/agents.md">agents.md</a>.
-    Powered by the Konomi architecture, created by Thomas Frumkin.
+    Supplied by <a href="https://www.ai-nativesolutions.com">AI Native Solutions</a>. Powered by the Konomi architecture, created by Thomas Frumkin.
   </div>
 </div>
 <script type="module">
 const $ = (s)=>document.querySelector(s);
-const jsonl = async (f)=>{ try{ const t=await (await fetch(f+'?cb='+Date.now())).text(); return t.split('\n').filter(Boolean).map(l=>JSON.parse(l)); }catch{ return []; } };
-const esc=(s)=>String(s).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+const cb = () => '?cb=' + Date.now();
+const jsonl = async (f)=>{ try{ const t=await (await fetch(f+cb())).text(); return t.split('\n').filter(Boolean).map(l=>JSON.parse(l)); }catch{ return []; } };
+const esc=(s)=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const card=(p,meta)=>`<div class="post"><pre>${esc(p.text)}</pre><div class="meta">${meta}</div></div>`;
+const setText=(id,t)=>{ const el=document.getElementById(id); if (el) el.textContent=t; };
+const hex = async (buf) => [...new Uint8Array(await crypto.subtle.digest('SHA-256', buf))].map(b=>b.toString(16).padStart(2,'0')).join('');
+const gbp = new Intl.NumberFormat('en-GB',{style:'currency',currency:'GBP'});
+const num = new Intl.NumberFormat('en-GB',{maximumFractionDigits:2});
+
 (async()=>{
-  const queue = await jsonl('queue.jsonl');
-  const posted = await jsonl('posted.jsonl');
+  const [queue, posted, feed, approvals] = await Promise.all(['queue.jsonl','posted.jsonl','feed.jsonl','approvals.jsonl'].map(jsonl));
   const live = posted.filter(p=>!p.dryRun);
   $('#mode').textContent = live.length ? `LIVE — ${live.length} posted` : 'REHEARSING — keys not yet turned; every draft is public anyway';
-  const { checkCard, approvalFor, pinned } = await import('./claim-gate.mjs');
-  const feed = await jsonl('feed.jsonl'), approvals = await jsonl('approvals.jsonl');
-  const hex = async (buf) => [...new Uint8Array(await crypto.subtle.digest('SHA-256', buf))].map(b=>b.toString(16).padStart(2,'0')).join('');
+  const { checkCard, approvalFor, pinned } = await import('./claim-gate.mjs'+cb());
+  let core = null;
+  try { core = await import('./voice-core.mjs'+cb()); } catch { core = null; }
+
+  // the voice's own rules, read from its kernel
+  if (core) {
+    const R = core.RULES;
+    document.querySelectorAll('[data-f]').forEach(el=>{ const k=el.dataset.f; if (k in R) el.textContent = String(R[k]); });
+  }
+
   const gate = async (c) => {
     if (!c || pinned(c.receipt)) return checkCard(c, '', '');
     try { const r = await fetch(`https://raw.githubusercontent.com/${c.receipt.repo}/${c.receipt.commit}/${c.receipt.path}`); const buf = await r.arrayBuffer(); return checkCard(c, new TextDecoder().decode(buf), await hex(buf)); }
@@ -120,21 +331,129 @@ const card=(p,meta)=>`<div class="post"><pre>${esc(p.text)}</pre><div class="met
   };
   const livePosted = new Set(live.map(p=>p.cardId));
   const waiting = queue.filter(q=>!livePosted.has(q.cardId));
-  const rows = [];
+  const rows = [], results = [];
   for (const q of waiting) {
     const c = feed.find(f=>f.id===q.cardId);
     const g = await gate(c);
-    const a = approvalFor(q.cardId, await hex(new TextEncoder().encode(q.text)), approvals, false);
-    const state = !g.ok ? `<span style="color:var(--warn)">refused by the claim gate: ${esc(g.why.join('; '))}</span>` : a.ok ? `claim gate passed · ${esc(a.why)}` : `claim gate passed · <span style="color:var(--warn)">${esc(a.why)}</span>`;
-    rows.push(card(q, `${state}<br>queued ${esc(q.draftedAt||'')} · ${q.length} chars (URLs counted the X way)` + (c && c.receipt && c.receipt.commit ? ` · receipt <a href="https://github.com/${esc(c.receipt.repo)}/blob/${esc(c.receipt.commit)}/${esc(c.receipt.path)}">${esc(c.receipt.repo.split('/')[1])}@${esc(c.receipt.commit.slice(0,7))}</a>` : '')));
+    const textSha = await hex(new TextEncoder().encode(q.text));
+    const a = approvalFor(q.cardId, textSha, approvals, false);
+    results.push({ q, c, g, a, textSha });
+    const state = !g.ok ? `<span class="why">refused by the claim gate: ${esc(g.why.join('; '))}</span>` : a.ok ? `claim gate passed · ${esc(a.why)}` : `claim gate passed · <span class="why">${esc(a.why)}</span>`;
+    rows.push(card(q, `${state}<br>queued ${esc(q.draftedAt||'')} · ${esc(q.length)} chars (URLs counted the X way)` + (c && c.receipt && c.receipt.commit ? ` · receipt <a href="https://github.com/${esc(c.receipt.repo)}/blob/${esc(c.receipt.commit)}/${esc(c.receipt.path)}">${esc(c.receipt.repo.split('/')[1])}@${esc(c.receipt.commit.slice(0,7))}</a>` : '')));
   }
   $('#queue').innerHTML = rows.length ? rows.join('') : '<p class="muted">queue empty — the next sealed receipt becomes the next draft.</p>';
+
+  // drafts the rules gate refused before the queue: the same history the organ's draft step builds
+  const refusedAtRules = [];
+  if (core) {
+    const history = posted.map(p=>({ id:p.cardId, text:p.text })).concat(queue.map(q=>({ id:q.cardId, text:q.text })));
+    const have = new Set(history.map(h=>h.id));
+    for (const c of feed) {
+      if (!c.id || have.has(c.id)) continue;
+      const d = core.draftPost(c);
+      if (!d.ok) { refusedAtRules.push({ id:c.id, why:d.error }); continue; }
+      const g = core.rulesGate(d.text, { history: history.map(h=>h.text) });
+      if (g.ok) continue;
+      const hit = history.find(h=>core.overlap(d.text, h.text) >= core.RULES.dupThreshold);
+      refusedAtRules.push({ id:c.id, text:d.text, why:g.why, against: hit ? hit.id : null, overlap: hit ? core.overlap(d.text, hit.text) : null });
+    }
+    $('#refused').innerHTML = refusedAtRules.length ? `<p class="muted" style="font-size:13.5px;margin:4px 0 8px">Refused before the queue by the rules gate, re-checked in your browser by the voice's own kernel:</p>` + refusedAtRules.map(r=>card({ text: r.text || r.id }, `<span class="why">${esc(r.id)} — ${esc(r.why)}</span>${r.against ? ' · too like ' + esc(r.against) : ''}`)).join('') : '';
+    const k = (()=>{ for (let n=1;n<=12;n++) if (core.shingles(Array.from({length:n},(_,i)=>'w'+i).join(' ')).size>0) return n; return null; })();
+    const dup = refusedAtRules.find(r=>r.against);
+    $('#dup').textContent = dup
+      ? `Yes — it refused one of the voice's own drafts, and your browser just re-ran the check: the ${dup.id} post overlapped the ${dup.against} post at ${dup.overlap} (${k}-word shingles; ${core.RULES.dupThreshold} or more is refused), so it never reached the queue — the two posts said nearly the same thing. X refuses near-identical posts too.`
+      : `It compares every new draft with everything posted or queued (${k}-word shingles; ${core.RULES.dupThreshold} or more is refused). No draft in the feed is refused for it right now.`;
+  } else {
+    $('#dup').textContent = 'Your browser could not load the voice kernel here, so the live check did not run; the rule is in voice-core.mjs (rulesGate).';
+  }
+
+  // the measured receipt and the seal
+  let m = null, P = null;
+  try { m = await (await fetch('data/claimgate-run.json'+cb())).json(); } catch {}
+  try { P = await (await fetch('data/claimgate-prereg.json'+cb())).json(); } catch {}
+  if (m) {
+    const li = Object.entries(m.claims).map(([k,c])=>`<li><b>${esc(k)} ${c.pass?'held':'FAILED'}</b> — ${esc(c.measured)}</li>`).join('');
+    let v3 = '';
+    const off = (m.claims.V3 && m.claims.V3.forgeries || []).filter(x=>x.refused && !x.forItsReason);
+    if (P && off.length) {
+      const parts = off.map(x=>{
+        const g = P.genuine.find(c=>c.id===x.card);
+        const first = g && g.claim.match(/\d+(?:,\d{3})*(?:\.\d+)?/);
+        const nums = g ? g.facts.filter(f=>typeof f.value==='number').map(f=>`${f.path} = ${f.value}`).join(', ') : '';
+        return `${esc(x.card)} (${esc(x.forgery)}): the first number in its claim is ${esc(first ? first[0] : '?')}, and no numeric field of the card holds exactly that (${esc(nums)})`;
+      });
+      v3 = `<p style="margin:8px 0 0">V3 failed as sealed: all ${m.claims.V3.forgeries.length} forgeries were refused, but for ${off.length} of them the sealed forgery rule could not build its "edit the receipt field too" forgery — ${parts.join('; ')} — so they were refused as plain moved numbers, not for the marker the seal named. The rule was at fault, not the gate, and the failure is kept.</p>`;
+    }
+    $('#measured').innerHTML = `<p style="margin:0 0 8px"><b>${m.held} of ${m.of} sealed claims held</b> (sealed before the gate's code, <a href="https://github.com/sjgant80-hub/kar-voice/blob/main/data/claimgate-prereg.json">the seal</a>, <a href="https://github.com/sjgant80-hub/kar-voice/blob/main/data/claimgate-run.json">the receipt</a> — CI re-measures it on every push).</p><ul>${li}</ul>${v3}`;
+    setText('bp-measured', `${m.held} of ${m.of} held`);
+    setText('bp-receipt', `${m.held} of ${m.of} held, sealed at ${m.seal}`);
+    setText('wp-held', `${m.held} of ${m.of} held (${Object.entries(m.claims).filter(([,c])=>!c.pass).map(([k])=>k+' failed').join(', ') || 'none failed'})`);
+    if (m.claims.V6) setText('v6', m.claims.V6.measured);
+    const v5 = m.claims.V5 && m.claims.V5.scenarios;
+    if (v5) setText('s7', v5.map(s=>s.calls).join(','));
+  } else { $('#measured').innerHTML = '<p class="muted">the measurement could not be loaded.</p>'; }
+  if (P && P.scope) setText('wp-scope', P.scope);
+
+  // blueprint: the baseline as the repo shows it, and the files today
   try {
-    const m = await (await fetch('data/claimgate-run.json?cb='+Date.now())).json();
-    const li = Object.entries(m.claims).map(([k,c])=>`<li><b>${k} ${c.pass?'held':'FAILED'}</b> — ${esc(c.measured)}</li>`).join('');
-    $('#measured').innerHTML = `<p style="margin:0 0 8px"><b>${m.held} of ${m.of} sealed claims held</b> (sealed before the gate's code, <a href="https://github.com/sjgant80-hub/kar-voice/blob/main/data/claimgate-prereg.json">the seal</a>, <a href="https://github.com/sjgant80-hub/kar-voice/blob/main/data/claimgate-run.json">the receipt</a> — CI re-measures it on every push).</p><ul>${li}</ul><p style="margin:8px 0 0">V3 failed as sealed: all 35 forgeries were refused, but for two cards the sealed forgery rule could not build its "edit the receipt field too" forgery — the first number was the 7 in "7B" (no numeric field holds it) and a rounded 0.672 (the field is 0.672461) — so those two were refused as plain moved numbers, not for the marker the seal named. The failure is kept.</p>`;
-  } catch { $('#measured').innerHTML = '<p class="muted">the measurement could not be loaded.</p>'; }
+    const b = await (await fetch('witness.baseline.json'+cb())).json();
+    $('#baseline').innerHTML = b.length ? `<b>${b.length} reviewed-equivalent survivor${b.length>1?'s':''}</b> baselined, ${b.length>1?'each':''} with its written reason: <i>${esc(b.map(x=>x.mutation+' — '+x.reason).join(' | '))}</i>` : '<b>nothing baselined</b>';
+  } catch { setText('baseline', 'baseline file not loaded'); }
+  setText('bp-files', `${feed.length} cards, ${queue.length} queued, ${approvals.filter(a=>a.by==='simon' && !a.withdrawn).length} approved by Simon, ${posted.length} in the ledger (${live.length} live)`);
+
+  // the traced card for the flow diagram: the first genuine card in the queue
+  const t = results.find(r=>r.c && !pinned(r.c.receipt));
+  const claimRefused = results.filter(r=>!r.g.ok);
+  setText('s3', refusedAtRules.length ? `${refusedAtRules.length}: ${refusedAtRules.map(r=>r.overlap!=null ? 'overlap '+r.overlap : r.id).join(', ')}` : 'none now');
+  setText('s4', claimRefused.length ? `${claimRefused.length}: ${[...new Set(claimRefused.map(r=>r.g.why[0]))].join(', ')}` : 'none now');
+  setText('s6', `${results.filter(r=>r.g.ok && !r.a.ok).length} drafts`);
+  setText('f8', `${posted.length} entries: ${posted.filter(p=>p.dryRun).length} rehearsals, ${live.length} live`);
+  if (t) {
+    setText('f1', `${t.c.id} → ${t.c.receipt.repo.split('/')[1]}@${t.c.receipt.commit.slice(0,7)} · ${t.c.facts.length} facts`);
+    setText('f2', `${t.q.length} chars, links counted the X way`);
+    setText('f3', core ? (core.rulesGate(t.q.text, {}).ok ? 'passed in your browser' : 'refused in your browser') : 'passed when drafted');
+    setText('f4', t.g.ok ? 'passed in your browser, just now' : 'refused: ' + t.g.why[0]);
+    setText('f5', `SHA-256 ${t.textSha.slice(0,12)}…`);
+    setText('f6', t.a.why);
+    $('#trace').innerHTML = `Traced: <b>${esc(t.c.id)}</b> — its receipt <a href="https://github.com/${esc(t.c.receipt.repo)}/blob/${esc(t.c.receipt.commit)}/${esc(t.c.receipt.path)}">${esc(t.c.receipt.path)}</a> was fetched at commit ${esc(t.c.receipt.commit.slice(0,7))} and hashed in your browser; ${esc(t.c.facts.length)} named fields back every number; the draft is ${esc(t.q.length)} characters the X way; it now ${t.a.ok ? 'has an approval: ' + esc(t.a.why) : 'waits: ' + esc(t.a.why)}. In the sealed sandbox the same path called X <b>${esc(m && m.claims.V5 ? m.claims.V5.scenarios.map(s=>s.calls).join(', ') : '…')}</b> times across its ${esc(m && m.claims.V5 ? m.claims.V5.scenarios.length : '…')} approval scenarios — only the last (${esc(m && m.claims.V5 ? m.claims.V5.scenarios.at(-1).name : '…')}) reached X, carrying exactly the approved text.`;
+  } else { $('#trace').textContent = 'No genuine card is in the queue right now to trace.'; }
+
   $('#posted').innerHTML = posted.length ? posted.slice().reverse().map(p=>card(p, p.dryRun ? `rehearsal · ${esc(p.at||'')}` : `posted · ${esc(p.at||'')}${p.tweetId?' · id '+esc(p.tweetId):''}`)).join('') : '<p class="muted">nothing yet.</p>';
+})();
+
+// the cost case: the kernel, the sourced basis, the reader's own numbers
+(async()=>{
+  try {
+    const [{ DEFAULTS, voiceCase, sourcesOf }, basis] = await Promise.all([
+      import('./costcase.mjs'+cb()),
+      fetch('vendor/sovereign-enterprise/data/basis.json'+cb()).then(r=>r.json()),
+    ]);
+    let cap = null;
+    try { cap = (await import('./voice-core.mjs'+cb())).RULES.maxPerDay; } catch {}
+    const keys = ['postsPerWeek','minutesPerPost','approveMinutes','seats','tokensIn','tokensOut','hoursOn','years'];
+    const start = { ...DEFAULTS, hoursOn: basis.hoursPerYear.value };
+    for (const k of keys) { const el = document.getElementById('in-'+k); el.value = start[k]; el.addEventListener('input', render); }
+    if (cap) document.getElementById('in-postsPerWeek').max = String(7 * cap);
+    const wage = basis.wageMedianHourly.value, seat = basis['seat.copilot'], api = basis.frontier;
+    function render() {
+      const input = {};
+      for (const k of keys) { const v = document.getElementById('in-'+k).value; input[k] = v === '' ? NaN : Number(v); }
+      const r = voiceCase(basis, input, cap);
+      if (!r.ok) { $('#case').innerHTML = `<p class="why">${esc(r.why)}</p>`; return; }
+      const n = r.inputs.years;
+      const row = (name, note, k) => `<tr><td><b>${name}</b><br><span class="muted">${note}</span></td><td class="n">${gbp.format(r.perYear[k])}</td><td class="n">${gbp.format(r.over[k])}</td></tr>`;
+      const vc = r.versusCloudOver;
+      $('#case').innerHTML = `<div class="tblwrap"><table class="tbl"><thead><tr><th>Route</th><th class="n">a year</th><th class="n">over ${n} year${n>1?'s':''}</th></tr></thead><tbody>
+        ${row('Today', `people write and check every post: ${num.format(r.hours.today)} hours a year at the UK median wage, ${gbp.format(wage)} an hour`, 'today')}
+        ${row('Rent assistant seats', `${r.inputs.seats} × ${esc(seat.product)} at ${gbp.format(seat.value)} per user a month; they help each person but take no work off, so the staff time stays`, 'rentSeats')}
+        ${row('A cloud model drafts each post', `${esc(api.product)} at $${api.inPerM} in / $${api.outPerM} out per million tokens, converted at ${basis.fxGbpPerUsd.value}; counted as taking the same work off as the voice, plus the approval time (generous to it: it does no claim check)`, 'cloudApi')}
+        ${row('Own the voice', `the approval time that stays (${num.format(r.hours.approving)} hours a year) plus the extra power of the machine it runs on, ${gbp.format(r.lines.power)} a year counted at ${num.format(r.inputs.hoursOn)} hours on`, 'own')}
+      </tbody></table></div>
+      <p style="margin:10px 0 0"><b>Hours handed back:</b> ${num.format(r.hours.handedBack)} of ${num.format(r.hours.today)} a year (the approver's minutes stay on every route). <b>Saving against today:</b> ${gbp.format(r.savingPerYear)} a year, ${gbp.format(r.savingOver)} over ${n} year${n>1?'s':''}. <b>Against renting seats:</b> ${gbp.format(r.versusSeatsOver)} over ${n} year${n>1?'s':''}. <b>Against a cloud model:</b> ${vc >= 0 ? `${gbp.format(vc)} less over ${n} year${n>1?'s':''}` : `the cloud route is ${gbp.format(-vc)} cheaper over ${n} year${n>1?'s':''} on these inputs`} — on the bill alone the two are close; the difference is that the voice checks every number against its receipt and the cloud model does not.</p>`;
+    }
+    render();
+    $('#sources').innerHTML = sourcesOf(basis).map(s=>`<li><b>${esc(s.key)}</b> — ${esc(s.what)}${s.source ? ` · <a href="${esc(s.source)}">source</a>` : ' (arithmetic, not a source)'}</li>`).join('') + `<li class="muted">${esc(basis.currency)}. The basis is copied byte for byte from sovereign-enterprise; its hash is checked on every push.</li>`;
+  } catch { $('#case').innerHTML = '<p class="muted">the cost case could not be loaded here.</p>'; }
 })();
 </script>
 </body>

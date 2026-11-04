@@ -20,8 +20,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
-      - name: unit suites
-        run: node --test voice-core.test.mjs claim-gate.test.mjs
+      - name: unit suites (the kernels, the vendored basis's pinned hash, and the live page's wiring)
+        run: node --test voice-core.test.mjs claim-gate.test.mjs costcase.test.mjs page.test.mjs
       - name: the claim gate's seal, and its six claims re-measured against receipts fetched at their pins
         run: |
           node tools/claimgate-measure.mjs --check
@@ -35,9 +35,19 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
-      - name: witness gates the voice kernel
-        run: node vendor/witness/witness.mjs mutate voice-core.mjs --cap 400 --timeout 120000 --test node --test voice-core.test.mjs
+      - name: witness, pinned at v0.6 (the tag's commit is checked, so a moved tag fails the gate)
+        run: |
+          git clone --depth 1 --branch v0.6 https://github.com/sjgant80-hub/witness.git "$RUNNER_TEMP/witness"
+          test "$(git -C "$RUNNER_TEMP/witness" rev-parse HEAD)" = "f04fe3047e3d49b98c67713befd5b77182afa0d4" || { echo "::error::witness v0.6 is not the pinned commit"; exit 1; }
+      - name: witness gates the voice kernel (one reviewed-equivalent survivor baselined with its written reason)
+        run: |
+          node "$RUNNER_TEMP/witness/witness.mjs" mutate voice-core.mjs --cap 400 --timeout 120000 --test node --test voice-core.test.mjs | tee vc.out
+          grep -q '"clean": true' vc.out || { echo "::error::mutants survived in voice-core.mjs"; exit 1; }
       - name: witness gates the claim gate (nothing baselined; refuse anything short of clean)
         run: |
-          node vendor/witness/witness.mjs mutate claim-gate.mjs --cap 1000 --timeout 120000 --test node --test claim-gate.test.mjs | tee cg.out
+          node "$RUNNER_TEMP/witness/witness.mjs" mutate claim-gate.mjs --cap 1000 --timeout 120000 --test node --test claim-gate.test.mjs | tee cg.out
           grep -q '"clean": true' cg.out || { echo "::error::mutants survived in claim-gate.mjs"; exit 1; }
+      - name: witness gates the cost case (nothing baselined; refuse anything short of clean)
+        run: |
+          node "$RUNNER_TEMP/witness/witness.mjs" mutate costcase.mjs --cap 1000 --timeout 120000 --test node --test costcase.test.mjs | tee cc.out
+          grep -q '"clean": true' cc.out || { echo "::error::mutants survived in costcase.mjs"; exit 1; }

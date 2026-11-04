@@ -1,0 +1,22 @@
+{
+ "kind": "kar-voice.vendor",
+ "v": 1,
+ "note": "Copied byte for byte from the repo and commit named (raw file at that commit, not a working copy). Never edit a vendored file; re-vendor. costcase.test.mjs checks the hash on every push.",
+ "files": [
+  {
+   "path": "vendor/sovereign-enterprise/data/basis.json",
+   "repo": "sjgant80-hub/sovereign-enterprise",
+   "commit": "003e44795bc0ef90c92b7ee6a53160f51be1be79",
+   "src": "data/basis.json",
+   "sha256": "83e9c2effa2f81596dcfa7110f030940032c1910cdf928d27d628ae59d73bb42",
+   "sameAs": "sjgant80-hub/ai-first-company vendor/sovereign-enterprise/data/basis.json and liveware vendor/ai-first-company/vendor/sovereign-enterprise/data/basis.json (same sha256)",
+   "what": "the sourced cost basis (ONS wage, CPI, DESNZ electricity, ECB exchange rate, vendor prices) the For your business cost case reads"
+  },
+  {
+   "path": "vendor/witness/",
+   "repo": "sjgant80-hub/witness",
+   "commit": "bdca01f",
+   "what": "the mutation gate for local runs (v0.6 plus one CLI message that names a red baseline honestly). CI runs the pinned tag v0.6 (f04fe3047e3d49b98c67713befd5b77182afa0d4) from a fresh clone; the mutation engine is the same in both."
+  }
+ ]
+}
