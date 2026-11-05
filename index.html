@@ -196,11 +196,11 @@
   </div>
   <div class="organs">
     <div class="organ"><code>voice-core.mjs</code> — the voice's pure kernel: the fixed drafting template, X-style length (every link counts as <span data-f="tcoUrlLength">…</span> characters), the near-duplicate check, the daily cap, the summoned-only reply rule, and the OAuth 1.0a signature X accepts.
-      <div class="st">tested by <b>voice-core.test.mjs</b> (signature checked against X's documented example) · witness in CI · <span id="baseline">…</span></div></div>
+      <div class="st">tested by <b>voice-core.test.mjs</b> (signature checked against X's documented example; garbage, or a key X cannot encode, gives no signature at all, never a throw) · witness in CI · <span id="baseline">…</span></div></div>
     <div class="organ"><code>claim-gate.mjs</code> — the two rules: <code>checkCard()</code> holds a card to its committed receipt; <code>approvalFor()</code> binds an approval to the SHA-256 of the exact words. Runs in Node and in this page.
       <div class="st">tested by <b>claim-gate.test.mjs</b> · witness in CI, <b>nothing baselined</b>: any surviving mutant fails the push · measured against six sealed claims: <span id="bp-measured">…</span></div></div>
     <div class="organ"><code>voice.mjs</code> — the IO organ: <code>draft</code> (feed → both gates → queue), <code>approve</code> (Kar records Simon's word in chat, quoted), <code>withdraw</code>, <code>post</code> (dry run unless the keys are present and DRY_RUN=0), <code>status</code> (never prints keys). The world is injected (files, clock, network), so a sandbox can stand in for X.
-      <div class="st">exercised end to end by the sealed measurement in a sandbox with X replaced by a recorder and planted fake keys (claims V1, V5, V6)</div></div>
+      <div class="st">tested by <b>voice.test.mjs</b> on the parts that need no network (approvals bound to the exact words, withdrawals, a rehearsal approval never counted as Simon's, keys never shown, a dry run without the explicit switch) · exercised end to end by the sealed measurement in a sandbox with X replaced by a recorder and planted fake keys (claims V1, V5, V6)</div></div>
     <div class="organ"><code>costcase.mjs</code> — the cost case on this page: staff time on proof posts today, the two rented-AI routes, and owning the voice; every external figure read from the sourced basis below.
       <div class="st">tested by <b>costcase.test.mjs</b> (including the basis's pinned hash) · witness in CI, <b>nothing baselined</b></div></div>
     <div class="organ"><code>tools/claimgate-measure.mjs</code> + <code>data/claimgate-prereg.json</code> + <code>data/claimgate-run.json</code> — the seal (six claims, committed before the gate's code) and the measurement. CI checks the seal is unchanged since the commit that sealed it, then measures again against receipts fetched at their pins and requires the committed receipt byte for byte.
@@ -345,7 +345,7 @@ const num = new Intl.NumberFormat('en-GB',{maximumFractionDigits:2});
   };
   const livePosted = new Set(live.map(p=>p.cardId));
   const waiting = queue.filter(q=>!livePosted.has(q.cardId));
-  const rows = [], results = [];
+  const passed = [], refusedRows = [], results = [];
   for (const q of waiting) {
     const c = feed.find(f=>f.id===q.cardId);
     const g = await gate(c);
@@ -353,9 +353,13 @@ const num = new Intl.NumberFormat('en-GB',{maximumFractionDigits:2});
     const a = approvalFor(q.cardId, textSha, approvals, false);
     results.push({ q, c, g, a, textSha });
     const state = !g.ok ? `<span class="why">refused by the claim gate: ${esc(g.why.join('; '))}</span>` : a.ok ? `claim gate passed · ${esc(a.why)}` : `claim gate passed · <span class="why">${esc(a.why)}</span>`;
-    rows.push(card(q, `${state}<br>queued ${esc(q.draftedAt||'')} · ${esc(q.length)} chars (URLs counted the X way)` + (c && c.receipt && c.receipt.commit ? ` · receipt <a href="https://github.com/${esc(c.receipt.repo)}/blob/${esc(c.receipt.commit)}/${esc(c.receipt.path)}">${esc(c.receipt.repo.split('/')[1])}@${esc(c.receipt.commit.slice(0,7))}</a>` : '')));
+    (g.ok ? passed : refusedRows).push(card(q, `${state}<br>queued ${esc(q.draftedAt||'')} · ${esc(q.length)} chars (URLs counted the X way)` + (c && c.receipt && c.receipt.commit ? ` · receipt <a href="https://github.com/${esc(c.receipt.repo)}/blob/${esc(c.receipt.commit)}/${esc(c.receipt.path)}">${esc(c.receipt.repo.split('/')[1])}@${esc(c.receipt.commit.slice(0,7))}</a>` : '')));
   }
-  $('#queue').innerHTML = rows.length ? rows.join('') : '<p class="muted">queue empty — the next sealed receipt becomes the next draft.</p>';
+  // the drafts that passed come first; the ones the claim gate refuses follow under their own label
+  $('#queue').innerHTML = (passed.length || refusedRows.length)
+    ? (passed.length ? passed.join('') : '<p class="muted">no draft passes the claim gate right now.</p>')
+      + (refusedRows.length ? `<p class="muted" style="font-size:13.5px;margin:12px 0 8px">Still in the queue, refused by the claim gate on every check:</p>` + refusedRows.join('') : '')
+    : '<p class="muted">queue empty — the next sealed receipt becomes the next draft.</p>';
 
   // drafts the rules gate refused before the queue: the same history the organ's draft step builds
   const refusedAtRules = [];
@@ -421,7 +425,9 @@ const num = new Intl.NumberFormat('en-GB',{maximumFractionDigits:2});
     const b = await (await fetch('witness.baseline.json'+cb())).json();
     $('#baseline').innerHTML = b.length ? `<b>${b.length} reviewed-equivalent survivor${b.length>1?'s':''}</b> baselined, ${b.length>1?'each ':''}with its written reason: <i>${esc(b.map(x=>x.mutation+' — '+x.reason).join(' | '))}</i>` : '<b>nothing baselined</b>';
   } catch { setText('baseline', 'baseline file not loaded'); }
-  setText('bp-files', `${feed.length} cards, ${queue.length} queued, ${approvals.filter(a=>a.by==='simon' && !a.withdrawn).length} approved by Simon, ${posted.length} in the ledger (${live.length} live)`);
+  // approvals by Simon that still stand, read by the gated kernel (a withdrawn one, or words changed after it, do not count)
+  const standing = (await Promise.all(queue.map(async q=>approvalFor(q.cardId, await hex(new TextEncoder().encode(q.text)), approvals, true).ok))).filter(Boolean).length;
+  setText('bp-files', `${feed.length} cards, ${queue.length} queued, ${standing} with Simon's approval standing, ${posted.length} in the ledger (${live.length} live)`);
 
   // the traced card for the flow diagram: the first genuine card in the queue
   const t = results.find(r=>r.c && !pinned(r.c.receipt));
@@ -478,7 +484,7 @@ const num = new Intl.NumberFormat('en-GB',{maximumFractionDigits:2});
       <p style="margin:10px 0 0"><b>Hours handed back:</b> ${r.hours.handedBack >= 0 ? `${num.format(r.hours.handedBack)} of ${num.format(r.hours.today)} a year (the approver's minutes and the upkeep stay)` : `none on these inputs — the approving and the upkeep take ${num.format(-r.hours.handedBack)} hours a year more than the posts take today`}. <b>Owning it against today:</b> ${diff(r.savingPerYear)} a year running; ${diff(r.savingOver)} over ${n} year${n>1?'s':''} after the set-up. <b>Pays back its set-up:</b> ${r.paybackMonths === null ? 'not on these inputs — there is no running saving against today' : `in ${num.format(r.paybackMonths)} month${r.paybackMonths === 1 ? '' : 's'} of that saving`}. <b>Against renting seats:</b> ${diff(r.versusSeatsOver)} over ${n} year${n>1?'s':''}. <b>Against a cloud model:</b> ${vc >= 0 ? `${gbp.format(vc)} less over ${n} year${n>1?'s':''}` : `the cloud route is ${gbp.format(-vc)} cheaper over ${n} year${n>1?'s':''} on these inputs`} — on the bill alone the two are close; the difference is that the voice checks every number against its receipt and the cloud model does not.</p>`;
     }
     render();
-    $('#sources').innerHTML = sourcesOf(basis).map(s=>`<li><b>${esc(s.key)}</b> — ${esc(s.what)}${s.source ? ` · <a href="${esc(s.source)}">source</a>` : ' (arithmetic, not a source)'}</li>`).join('') + `<li><b>X's charge for a post</b> — not in the basis: your own entry, read from <a href="https://docs.x.com/x-api/getting-started/pricing">X's pricing page</a>, converted at fxGbpPerUsd above</li><li><b>Minutes a seat saves</b> — not in the basis: your own figure</li><li class="muted">${esc(basis.currency)}. The basis is copied byte for byte from sovereign-enterprise; its hash is checked on every push.</li>`;
+    $('#sources').innerHTML = sourcesOf(basis).map(s=>`<li><b>${esc(s.key)}</b> — ${esc(s.what)}${s.source ? ` · <a href="${esc(s.source)}">source</a>` : ' (arithmetic, not a source)'}${basis[s.key] && basis[s.key].via ? ` <span class="muted">(read for the ${esc(basis[s.key].via)})</span>` : ''}</li>`).join('') + `<li><b>X's charge for a post</b> — not in the basis: your own entry, read from <a href="https://docs.x.com/x-api/getting-started/pricing">X's pricing page</a>, converted at fxGbpPerUsd above</li><li><b>Minutes a seat saves</b> — not in the basis: your own figure</li><li class="muted">${esc(basis.currency)}. The basis is copied byte for byte from sovereign-enterprise; its hash is checked on every push.</li>`;
   } catch { $('#case').innerHTML = '<p class="muted">the cost case could not be loaded here.</p>'; }
 })();
 </script>

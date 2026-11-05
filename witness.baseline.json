@@ -2,6 +2,6 @@
   {
     "mutation": "< → <=",
     "snippet": "pairs.sort((a, b) => (a[0] < b[0] ? -1 : 1));",
-    "reason": "Reviewed-equivalent: params are a JS object, so encoded keys are unique by construction; for distinct a and b, a<b and a<=b decide identically, and the equal-key case the flip would change can never occur. The OAuth vector test pins the resulting order on real data."
+    "reason": "Reviewed-equivalent: params are a JS object, so its keys are unique strings; the strict encoder (enc) is injective on every string it can encode and voids the whole base string on any it cannot (tested: two keys that cannot be encoded give an empty base string, never one collapsed empty key), so the encoded keys are unique too. For distinct a and b, a<b and a<=b decide identically, and the equal-key case the flip would change can never occur. The OAuth vector test pins the resulting order on real data."
   }
 ]

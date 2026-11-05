@@ -116,11 +116,15 @@ function replyOf(mention, { repliedIds = [], selfUsername = '' } = {}) {
 // Pure over its inputs; nonce and timestamp are parameters so the whole thing is testable against
 // the canonical RFC vector. percentEncode is RFC 3986 (OAuth's stricter variant of encodeURIComponent).
 // The signing functions are total too: garbage (or a string X cannot encode, such as a lone surrogate) gives '' — and
-// an empty header, which voice.mjs refuses to send — never a throw.
+// an empty header, which voice.mjs refuses to send — never a throw. Inside the signer the encoding is STRICT (enc
+// throws), so one key, value, URL or secret that cannot be encoded voids the whole signature: it is never signed as an
+// empty string, and two keys that cannot be encoded can never collapse into one. Encoding is injective on the strings
+// that do encode, so the encoded keys of a params object stay unique.
+function enc(s) {
+  return encodeURIComponent(String(s)).replace(/[!'()*]/g, (c) => '%' + c.charCodeAt(0).toString(16).toUpperCase());
+}
 export function percentEncode(s) {
-  try {
-    return encodeURIComponent(String(s)).replace(/[!'()*]/g, (c) => '%' + c.charCodeAt(0).toString(16).toUpperCase());
-  } catch { return ''; }
+  try { return enc(s); } catch { return ''; }
 }
 
 export function signatureBaseString(method, url, params) {
@@ -128,13 +132,13 @@ export function signatureBaseString(method, url, params) {
 }
 function baseOf(method, url, params) {
   const pairs = [];
-  for (const [k, v] of Object.entries(params)) pairs.push([percentEncode(k), percentEncode(v)]);
+  for (const [k, v] of Object.entries(params)) pairs.push([enc(k), enc(v)]);
   // params arrive as a JS object, so keys are unique BY CONSTRUCTION — the spec's sort-by-value
   // tiebreak for duplicate keys can never fire here, and writing it anyway would be dead code a
   // mutation gate rightly flags. Key order alone is total for unique keys.
   pairs.sort((a, b) => (a[0] < b[0] ? -1 : 1));
   const paramStr = pairs.map(([k, v]) => `${k}=${v}`).join('&');
-  return `${method.toUpperCase()}&${percentEncode(url)}&${percentEncode(paramStr)}`;
+  return `${method.toUpperCase()}&${enc(url)}&${enc(paramStr)}`;
 }
 
 export function oauth1Signature(args) {
@@ -143,7 +147,7 @@ export function oauth1Signature(args) {
 function signatureOf({ method, url, params, consumerSecret, tokenSecret }) {
   const base = signatureBaseString(method, url, params);
   if (!base) return '';
-  const key = `${percentEncode(consumerSecret)}&${percentEncode(tokenSecret || '')}`;
+  const key = `${enc(consumerSecret)}&${enc(tokenSecret || '')}`;
   return createHmac('sha1', key).update(base).digest('base64');
 }
 
@@ -162,7 +166,7 @@ function headerOf({ method, url, consumerKey, consumerSecret, token, tokenSecret
   const sig = oauth1Signature({ method, url, params: oauth, consumerSecret, tokenSecret });
   if (!sig) return { header: '', oauth: null };   // nothing signed, nothing to send
   const all = { ...oauth, oauth_signature: sig };
-  const header = 'OAuth ' + Object.keys(all).sort().map((k) => `${percentEncode(k)}="${percentEncode(all[k])}"`).join(', ');
+  const header = 'OAuth ' + Object.keys(all).sort().map((k) => `${enc(k)}="${enc(all[k])}"`).join(', ');
   return { header, oauth: all };
 }
 

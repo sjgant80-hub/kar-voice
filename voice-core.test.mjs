@@ -193,3 +193,19 @@ test('fuzz: signing never throws — garbage gives an empty signature and an emp
   assert.deepEqual(oauth1Header({ url: 'https://api.x.com/2/tweets', consumerKey: 'ck', consumerSecret: 'cs', token: 'tk', tokenSecret: 'ts' }), { header: '', oauth: null }, 'no method: no header');
   assert.equal(signatureBaseString('post', 'https://api.x.com/2/tweets', { a: 'b' }), 'POST&https%3A%2F%2Fapi.x.com%2F2%2Ftweets&a%3Db');
 });
+
+test('a key, value, URL or secret X cannot encode voids the whole signature — it is never signed as an empty string', () => {
+  const lone = String.fromCharCode(0xd800), other = String.fromCharCode(0xd801);
+  const url = 'https://api.x.com/2/tweets';
+  const ok = { method: 'POST', url, consumerKey: 'ck', consumerSecret: 'cs', token: 'tk', tokenSecret: 'ts', nonce: 'n', timestamp: 1 };
+  assert.ok(oauth1Header(ok).header.startsWith('OAuth '), 'the well-formed request signs');
+  for (const k of ['consumerKey', 'consumerSecret', 'token', 'tokenSecret', 'nonce', 'url']) {
+    assert.deepEqual(oauth1Header({ ...ok, [k]: lone }), { header: '', oauth: null }, `${k} with a lone surrogate: no header, nothing sent`);
+  }
+  assert.equal(signatureBaseString('POST', url, { [lone]: 'a', [other]: 'b' }), '', 'two keys that cannot be encoded never collapse into one empty key');
+  assert.equal(signatureBaseString('POST', url, { a: lone }), '', 'a value that cannot be encoded');
+  assert.equal(signatureBaseString('POST', lone, { a: 'b' }), '', 'a URL that cannot be encoded');
+  assert.equal(oauth1Signature({ method: 'POST', url, params: { a: 'b' }, consumerSecret: lone }), '', 'a consumer secret that cannot be encoded');
+  assert.equal(oauth1Signature({ method: 'POST', url, params: { a: 'b' }, consumerSecret: 'cs', tokenSecret: lone }), '', 'a token secret that cannot be encoded');
+  assert.notEqual(oauth1Signature({ method: 'POST', url, params: { a: 'b' }, consumerSecret: 'cs' }), '', 'no token secret is allowed (it signs with an empty one)');
+});

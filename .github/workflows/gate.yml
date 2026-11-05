@@ -14,14 +14,14 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0   # the claim gate's seal is checked against the commit that sealed it
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
-          node-version: '20'
-      - name: unit suites (the kernels, the vendored basis's pinned hash, and the live page's wiring)
-        run: node --test voice-core.test.mjs claim-gate.test.mjs costcase.test.mjs page.test.mjs
+          node-version: '24'
+      - name: unit suites (the kernels, the IO organ's approvals and status, the vendored basis's pinned hash, and the live page's wiring)
+        run: node --test voice-core.test.mjs voice.test.mjs claim-gate.test.mjs costcase.test.mjs page.test.mjs
       - name: the claim gate's seal, and its six claims re-measured against receipts fetched at their pins
         run: |
           node tools/claimgate-measure.mjs --check
@@ -31,10 +31,10 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 60
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
-          node-version: '20'
+          node-version: '24'
       - name: witness, pinned at v0.6 (the tag's commit is checked, so a moved tag fails the gate)
         run: |
           git clone --depth 1 --branch v0.6 https://github.com/sjgant80-hub/witness.git "$RUNNER_TEMP/witness"

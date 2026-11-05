@@ -122,7 +122,9 @@ export function organ({ dir = HERE, env = process.env, fetch = globalThis.fetch,
     const today = now().toISOString().slice(0, 10);
     return {
       queued: queued.length,
-      approved: new Set(approvals.filter((x) => x.by === 'simon').map((x) => x.itemId)).size,
+      // items whose approval by Simon still stands, read by the gated kernel: a withdrawn approval, or words changed after
+      // it, no longer counts (live = true, so a rehearsal approval never counts either)
+      approved: queued.filter((q) => approvalFor(q.cardId, sha256(q.text), approvals, true).ok).length,
       posted: posted.filter((p) => !p.dryRun).length,
       rehearsed: posted.filter((p) => p.dryRun).length,
       postedToday: posted.filter((p) => !p.dryRun && String(p.at || '').startsWith(today)).length,
