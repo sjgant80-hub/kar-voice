@@ -3,7 +3,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
-import { DEFAULTS, BASIS_KEYS, MAX_MINUTES, MAX_HOURS_ON, sourcesOf, over, voiceCase } from './costcase.mjs';
+import { DEFAULTS, BASIS_KEYS, MAX_MINUTES, MAX_HOURS_ON, MAX_SETUP_HOURS, MAX_UPKEEP_HOURS, sourcesOf, over, voiceCase } from './costcase.mjs';
 import { RULES } from './voice-core.mjs';
 
 const BASIS_TEXT = readFileSync(new URL('./vendor/sovereign-enterprise/data/basis.json', import.meta.url));
@@ -24,24 +24,61 @@ test('voiceCase · the default case, every line from the sourced basis', () => {
   const r = voiceCase(BASIS, {}, CAP);
   assert.equal(r.ok, true);
   assert.deepEqual(r.inputs, { ...DEFAULTS, hoursOn: BASIS.hoursPerYear.value });
-  assert.deepEqual(r.hours, { today: 260, approving: 43.33, handedBack: 216.67 });
-  assert.deepEqual(r.lines, { staff: 5114.2, approve: 852.37, takenOff: 4261.83, seats: 554.4, api: 2.35, power: 32.21 });
-  assert.deepEqual(r.perYear, { today: 5114.2, rentSeats: 5668.6, cloudApi: 854.72, own: 884.58 });
-  assert.deepEqual(r.over, { today: 15823.14, rentSeats: 17538.43, cloudApi: 2644.47, own: 2736.86 });
-  assert.deepEqual([r.savingPerYear, r.savingOver, r.versusSeatsOver, r.versusCloudOver], [4229.62, 13086.28, 14801.57, -92.39]);
+  assert.deepEqual(r.hours, { today: 260, approving: 43.33, upkeep: 24, handedBack: 192.67 });
+  assert.deepEqual(r.lines, { staff: 5114.2, approve: 852.37, takenOff: 4261.83, seats: 554.4, api: 2.35, power: 32.21, setup: 314.72, upkeep: 472.08 });
+  assert.deepEqual(r.perYear, { today: 5114.2, rentSeats: 5668.6, cloudApi: 1326.8, own: 1356.66 });
+  assert.deepEqual(r.over, { today: 15823.14, rentSeats: 17538.43, cloudApi: 4419.79, own: 4512.17 });
+  assert.deepEqual([r.savingPerYear, r.savingOver, r.versusSeatsOver, r.versusCloudOver], [3757.54, 11310.97, 13026.26, -92.38]);
+  assert.equal(r.paybackMonths, 1.01);
+});
+
+test('voiceCase · set-up and upkeep: the same on both automated routes, set-up counted once, upkeep every year with CPI', () => {
+  const w = BASIS.wageMedianHourly.value, cpi = BASIS.cpi.value;
+  const r = voiceCase(BASIS, { setupHours: 40, upkeepHoursPerMonth: 3, years: 2 }, CAP);
+  assert.equal(r.lines.setup, r2(40 * w));
+  assert.equal(r.lines.upkeep, r2(3 * 12 * w));
+  assert.equal(r.hours.upkeep, 36);
+  assert.equal(r.hours.handedBack, r2(260 - 43.33 - 36));
+  assert.equal(r.perYear.cloudApi, r2(r.lines.approve + r.lines.api + r.lines.upkeep));
+  assert.equal(r.perYear.own, r2(r.lines.approve + r.lines.power + r.lines.upkeep));
+  assert.equal(r.over.own, r2(over(r.perYear.own, cpi, 2) + r.lines.setup));
+  assert.equal(r.over.cloudApi, r2(over(r.perYear.cloudApi, cpi, 2) + r.lines.setup));
+  assert.equal(r.over.today, over(r.perYear.today, cpi, 2), 'today carries no set-up');
+  assert.equal(r.over.rentSeats, over(r.perYear.rentSeats, cpi, 2), 'seats carry no set-up');
+  assert.equal(r.savingOver, r2(r.over.today - r.over.own));
+  assert.equal(r.paybackMonths, r2(r.lines.setup / (r.savingPerYear / 12)));
+  const none = voiceCase(BASIS, { setupHours: 0, upkeepHoursPerMonth: 0 }, CAP);
+  assert.equal(none.lines.setup, 0);
+  assert.equal(none.lines.upkeep, 0);
+  assert.equal(none.paybackMonths, 0);
+  assert.equal(none.perYear.own, 884.58);
+  assert.equal(none.over.own, 2736.86);
+  assert.equal(none.hours.handedBack, 216.67);
+});
+
+test('voiceCase · payback only when there is a running saving', () => {
+  const even = voiceCase(BASIS, { postsPerWeek: 0, upkeepHoursPerMonth: 0, hoursOn: 0 }, CAP);
+  assert.equal(even.savingPerYear, 0);
+  assert.equal(even.paybackMonths, null, 'no saving: no payback, never Infinity');
+  const loss = voiceCase(BASIS, { approveMinutes: 30 }, CAP);
+  assert.ok(loss.savingPerYear < 0);
+  assert.equal(loss.paybackMonths, null);
+  const tiny = voiceCase(BASIS, { postsPerWeek: 1, minutesPerPost: 30, approveMinutes: 0, upkeepHoursPerMonth: 0, hoursOn: 0, setupHours: 1 }, CAP);
+  assert.equal(tiny.savingPerYear, r2(52 * 0.5 * BASIS.wageMedianHourly.value));
+  assert.equal(tiny.paybackMonths, r2(BASIS.wageMedianHourly.value / (tiny.savingPerYear / 12)));
 });
 
 test('voiceCase · like for like: seats take nothing off; the cloud model and the owned voice take the same off; approval stays on both', () => {
   const r = voiceCase(BASIS, { postsPerWeek: 20, minutesPerPost: 60, approveMinutes: 10, seats: 3, tokensIn: 2000, tokensOut: 500 }, CAP);
   assert.equal(r.perYear.rentSeats, r2(r.lines.staff + r.lines.seats));
-  assert.equal(r.perYear.cloudApi, r2(r.lines.approve + r.lines.api));
-  assert.equal(r.perYear.own, r2(r.lines.approve + r.lines.power));
+  assert.equal(r.perYear.cloudApi, r2(r.lines.approve + r.lines.api + r.lines.upkeep));
+  assert.equal(r.perYear.own, r2(r.lines.approve + r.lines.power + r.lines.upkeep));
   assert.equal(r.lines.takenOff, r2(r.lines.staff - r.lines.approve));
   assert.equal(r.lines.seats, r2(3 * 12 * BASIS['seat.copilot'].value));
   assert.equal(r.lines.staff, r2(20 * 52 * 60 / 60 * BASIS.wageMedianHourly.value));
   assert.equal(r.lines.approve, r2(20 * 52 * 10 / 60 * BASIS.wageMedianHourly.value));
   assert.equal(r.hours.today, 1040);
-  assert.equal(r.hours.handedBack, r2(r.hours.today - r.hours.approving));
+  assert.equal(r.hours.handedBack, r2(r.hours.today - r.hours.approving - r.hours.upkeep));
   assert.equal(r.savingPerYear, r2(r.perYear.today - r.perYear.own));
   assert.equal(r.versusSeatsOver, r2(r.over.rentSeats - r.over.own));
   assert.equal(r.versusCloudOver, r2(r.over.cloudApi - r.over.own));
@@ -84,10 +121,11 @@ test('voiceCase · the voice\'s own cap bounds the posts', () => {
 
 test('voiceCase · boundaries hold at both ends of every input', () => {
   for (const ok of [{ postsPerWeek: 0 }, { minutesPerPost: MAX_MINUTES }, { minutesPerPost: 0, approveMinutes: 0 }, { approveMinutes: 30 }, { approveMinutes: 0 },
-    { seats: 0 }, { years: 1 }, { years: 10 }, { tokensIn: 0, tokensOut: 0 }]) assert.equal(voiceCase(BASIS, ok, CAP).ok, true, JSON.stringify(ok));
-  assert.equal(voiceCase(BASIS, { approveMinutes: 30 }, CAP).savingPerYear, -32.21);
+    { seats: 0 }, { years: 1 }, { years: 10 }, { tokensIn: 0, tokensOut: 0 }, { setupHours: 0 }, { setupHours: MAX_SETUP_HOURS },
+    { upkeepHoursPerMonth: 0 }, { upkeepHoursPerMonth: MAX_UPKEEP_HOURS }]) assert.equal(voiceCase(BASIS, ok, CAP).ok, true, JSON.stringify(ok));
+  assert.equal(voiceCase(BASIS, { approveMinutes: 30, upkeepHoursPerMonth: 0 }, CAP).savingPerYear, -32.21);
   assert.equal(voiceCase(BASIS, { approveMinutes: 30 }, CAP).lines.takenOff, 0);
-  assert.equal(voiceCase(BASIS, { approveMinutes: 0 }, CAP).perYear.own, 32.21);
+  assert.equal(voiceCase(BASIS, { approveMinutes: 0, upkeepHoursPerMonth: 0 }, CAP).perYear.own, 32.21);
   assert.equal(voiceCase(BASIS, { postsPerWeek: 0 }, CAP).perYear.today, 0);
   assert.equal(voiceCase(BASIS, { years: 1 }, CAP).over.today, 5114.2);
   assert.equal(voiceCase(BASIS, { years: 10 }, CAP).over.today, over(5114.2, BASIS.cpi.value, 10));
@@ -110,6 +148,16 @@ test('voiceCase · each bad input refused with its reason', () => {
   assert.equal(why({ tokensIn: NaN }), 'tokens: numbers');
   assert.equal(why({ tokensOut: 'x' }), 'tokens: numbers');
   assert.equal(why({ tokensOut: -1 }), 'tokens: numbers');
+  const setup = `set-up hours: 0 to ${MAX_SETUP_HOURS}`;
+  assert.equal(why({ setupHours: MAX_SETUP_HOURS + 0.5 }), setup);
+  assert.equal(why({ setupHours: -1 }), setup);
+  assert.equal(why({ setupHours: '16' }), setup);
+  assert.equal(why({ setupHours: NaN }), setup);
+  const upkeep = `upkeep hours a month: 0 to ${MAX_UPKEEP_HOURS}`;
+  assert.equal(why({ upkeepHoursPerMonth: MAX_UPKEEP_HOURS + 0.5 }), upkeep);
+  assert.equal(why({ upkeepHoursPerMonth: -1 }), upkeep);
+  assert.equal(why({ upkeepHoursPerMonth: '2' }), upkeep);
+  assert.equal(why({ upkeepHoursPerMonth: Infinity }), upkeep);
   assert.equal(why({ years: 0 }), 'years: 1 to 10');
   assert.equal(why({ years: 11 }), 'years: 1 to 10');
   assert.equal(why({ years: 2.5 }), 'years: 1 to 10');

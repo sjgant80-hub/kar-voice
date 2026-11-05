@@ -54,6 +54,7 @@
   .tbl th,.tbl td{border-bottom:1px solid var(--line);padding:7px 6px;text-align:left;vertical-align:top}
   .tbl td.n,.tbl th.n{text-align:right;font-family:var(--mono);white-space:nowrap}
   .tbl th{color:var(--ink);font-weight:600}
+  .tbl th.n{white-space:normal;font-family:var(--sans)}
   .tblwrap{overflow-x:auto}
   .why{color:var(--warn)}
   .foot{margin-top:36px;padding-top:16px;border-top:1px solid var(--line);color:var(--muted);font-size:12.5px}
@@ -167,6 +168,7 @@
   <h2 id="queue-h">The queue — drafted, gated, waiting for Simon</h2>
   <p class="muted" style="font-size:13.5px;margin:-4px 0 12px">Each draft below is re-checked in your browser as the page loads: its receipt is fetched from GitHub at the exact commit the card pins, hashed, and every number in the post is matched to a field of that receipt. Then it waits for Simon's approval of those exact words.</p>
   <div id="queue"><p class="muted">loading…</p></div>
+  <p class="muted" style="font-size:13.5px;margin:4px 0 12px" id="queue-old"></p>
   <div id="refused"></div>
 
   <h2>The claim gate, measured</h2>
@@ -224,7 +226,7 @@
     </ul>
 
     <h3 id="cost">The cost case — your numbers, sourced figures</h3>
-    <p style="margin:0 0 6px">Put in your own numbers; the case recomputes as you type. It is computed by <code>costcase.mjs</code> (the tested, mutation-gated kernel above) from the sourced basis listed underneath. Floors, not top ends: staff time at the UK median wage with employer on-costs left out. These are your costs; no price of ours appears here. The starting values are an example to move, not a measurement. The saving is staff time valued at the wage — hours your people get back for other work — not a cash cut unless you choose one.</p>
+    <p style="margin:0 0 6px">Put in your own numbers; the case recomputes as you type. It is computed by <code>costcase.mjs</code> (the tested, mutation-gated kernel above) from the sourced basis listed underneath. Floors, not top ends: staff time at the UK median wage with employer on-costs left out. These are your costs; no price of ours appears here. The starting values are an example to move, not a measurement. The saving is staff time valued at the wage — hours your people get back for other work — not a cash cut unless you choose one. The work it takes to get and keep it is counted too: your own set-up hours, once, and upkeep hours every month, at the same wage, on both automated routes (a cloud model drafting the posts needs setting up and minding as well). If AI Native Solutions sets it up with you, that is agreed per deployment and is not in these figures.</p>
     <div class="calc" id="calc">
       <label>Proof posts a week <input id="in-postsPerWeek" type="number" min="0" step="1" inputmode="numeric"></label>
       <label>Minutes a person spends writing and checking one post today <input id="in-minutesPerPost" type="number" min="0" step="any" inputmode="decimal"></label>
@@ -232,6 +234,8 @@
       <label>Assistant seats you would rent instead <input id="in-seats" type="number" min="0" step="1" inputmode="numeric"></label>
       <label>A cloud model's tokens in, per post <input id="in-tokensIn" type="number" min="0" step="1" inputmode="numeric"></label>
       <label>A cloud model's tokens out, per post <input id="in-tokensOut" type="number" min="0" step="1" inputmode="numeric"></label>
+      <label>Hours, once, to set it up (copy it, point it at your organisation, write the first cards, run it dry) <input id="in-setupHours" type="number" min="0" step="any" inputmode="decimal"></label>
+      <label>Hours a month to keep it running (new cards, reading refusals) <input id="in-upkeepHoursPerMonth" type="number" min="0" step="any" inputmode="decimal"></label>
       <label>Hours a year the voice's machine counts as on <input id="in-hoursOn" type="number" min="0" step="1" inputmode="numeric"></label>
       <label>Years <input id="in-years" type="number" min="1" step="1" inputmode="numeric"></label>
     </div>
@@ -245,6 +249,8 @@
       <li><b>Two outbound hosts, both named in the code.</b> The voice fetches receipts from raw.githubusercontent.com at pinned commits, and, only when live, sends the approved text to api.x.com. This page fetches its own files, the same receipts, and the CI status badge image from github.com; no analytics, no cookies, no third-party scripts.</li>
       <li><b>The keys stay in your environment.</b> Four variables (X_CONSUMER_KEY, X_CONSUMER_SECRET, X_ACCESS_TOKEN, X_ACCESS_SECRET) the owner sets; the code reads them only to sign the request to X. Measured with planted fake keys through every sealed run: <span id="v6">…</span>.</li>
       <li><b>Almost no personal data.</b> It handles your published receipts and the text of your posts, and reads no customer or prospect data. The only personal data it keeps is the approver's name and quoted words in the approval file, which is public in this repo; keep your deployment's repo private if you want those words private.</li>
+      <li><b>No one else in the path.</b> The only services involved are your own GitHub (the repo, the receipts and this page) and, once live, your own X account. AI Native Solutions holds none of your data and runs no service the voice depends on.</li>
+      <li><b>It fails closed.</b> If GitHub cannot be reached, or a receipt is not the file the card pinned, the card is refused and nothing posts; if X refuses a post, nothing is recorded as posted.</li>
       <li><b>Cutting it off is one step.</b> Remove the four variables (or regenerate them at X) and nothing can post; <code>node voice.mjs withdraw &lt;id&gt;</code> cancels an approval before it is used.</li>
       <li><b>Everything is on the record.</b> The queue, the approvals and the ledger are files in git, so every change to them is in the repository's history. It runs on Node.js (the version CI runs is named in <code>.github/workflows/gate.yml</code>).</li>
       <li><b>Tamper-evident by construction.</b> A card pins a full commit and the receipt's SHA-256; a receipt edited after the fact no longer matches and the card is refused. An approval is bound to the SHA-256 of the exact text; one changed character voids it.</li>
@@ -399,6 +405,14 @@ const num = new Intl.NumberFormat('en-GB',{maximumFractionDigits:2});
   } else { $('#measured').innerHTML = '<p class="muted">the measurement could not be loaded.</p>'; }
   if (P && P.scope) setText('wp-scope', P.scope);
 
+  // the refused drafts still in the queue: when they were drafted, against when the claim gate was sealed
+  if (P && P.sealed) {
+    const day = (s) => String(s || '').slice(0, 10);
+    const old = results.filter(r=>!r.g.ok && day(r.q.draftedAt) < P.sealed);
+    const oldRehearsals = posted.filter(p=>p.dryRun && day(p.at) < P.sealed);
+    if (old.length) setText('queue-old', `Why refused drafts sit in the queue: the ${old.length} refused above were queued on ${[...new Set(old.map(r=>day(r.q.draftedAt)))].join(', ')}, before the claim gate was sealed on ${P.sealed}. They pin no receipt, so the gate refuses them on every check and they can never post; they stay as the record, never rewritten.` + (oldRehearsals.length ? ` The ${oldRehearsals.length} rehearsal${oldRehearsals.length>1?'s':''} in the ledger below date from then too (${[...new Set(oldRehearsals.map(p=>day(p.at)))].join(', ')}), before the gate existed.` : ''));
+  }
+
   // blueprint: the baseline as the repo shows it, and the files today
   try {
     const b = await (await fetch('witness.baseline.json'+cb())).json();
@@ -435,7 +449,7 @@ const num = new Intl.NumberFormat('en-GB',{maximumFractionDigits:2});
     ]);
     let cap = null;
     try { cap = (await import('./voice-core.mjs'+cb())).RULES.maxPerDay; } catch {}
-    const keys = ['postsPerWeek','minutesPerPost','approveMinutes','seats','tokensIn','tokensOut','hoursOn','years'];
+    const keys = ['postsPerWeek','minutesPerPost','approveMinutes','seats','tokensIn','tokensOut','setupHours','upkeepHoursPerMonth','hoursOn','years'];
     const start = { ...DEFAULTS, hoursOn: basis.hoursPerYear.value };
     for (const k of keys) { const el = document.getElementById('in-'+k); el.value = start[k]; el.addEventListener('input', render); }
     if (cap) document.getElementById('in-postsPerWeek').max = String(7 * cap);
@@ -448,13 +462,15 @@ const num = new Intl.NumberFormat('en-GB',{maximumFractionDigits:2});
       const n = r.inputs.years;
       const row = (name, note, k) => `<tr><td><b>${name}</b><br><span class="muted">${note}</span></td><td class="n">${gbp.format(r.perYear[k])}</td><td class="n">${gbp.format(r.over[k])}</td></tr>`;
       const vc = r.versusCloudOver;
-      $('#case').innerHTML = `<div class="tblwrap"><table class="tbl"><thead><tr><th>Route</th><th class="n">a year</th><th class="n">over ${n} year${n>1?'s':''}</th></tr></thead><tbody>
+      const diff = (v) => v >= 0 ? `${gbp.format(v)} less` : `${gbp.format(-v)} more`;
+      const setupNote = `the one-off set-up (${num.format(r.inputs.setupHours)} hours, ${gbp.format(r.lines.setup)}) is counted once, on the right`;
+      $('#case').innerHTML = `<div class="tblwrap"><table class="tbl"><thead><tr><th>Route</th><th class="n">a year, running</th><th class="n">over ${n} year${n>1?'s':''}, set-up included</th></tr></thead><tbody>
         ${row('Today', `people write and check every post: ${num.format(r.hours.today)} hours a year at the UK median wage, ${gbp.format(wage)} an hour`, 'today')}
         ${row('Rent assistant seats', `${r.inputs.seats} × ${esc(seat.product)} at ${gbp.format(seat.value)} per user a month; they help each person but take no work off, so the staff time stays`, 'rentSeats')}
-        ${row('A cloud model drafts each post', `${esc(api.product)} at $${api.inPerM} in / $${api.outPerM} out per million tokens, converted at ${basis.fxGbpPerUsd.value}; counted as taking the same work off as the voice, plus the approval time (generous to it: it does no claim check)`, 'cloudApi')}
-        ${row('Own the voice', `the approval time that stays (${num.format(r.hours.approving)} hours a year) plus the extra power of the machine it runs on, ${gbp.format(r.lines.power)} a year counted at ${num.format(r.inputs.hoursOn)} hours on`, 'own')}
+        ${row('A cloud model drafts each post', `${esc(api.product)} at $${api.inPerM} in / $${api.outPerM} out per million tokens, converted at ${basis.fxGbpPerUsd.value}; counted as taking the same work off as the voice, plus the approval time and the same upkeep (generous to it: it does no claim check); ${setupNote}`, 'cloudApi')}
+        ${row('Own the voice', `the approval time that stays (${num.format(r.hours.approving)} hours a year), the upkeep (${num.format(r.hours.upkeep)} hours a year, ${gbp.format(r.lines.upkeep)}), and the extra power of the machine it runs on, ${gbp.format(r.lines.power)} a year counted at ${num.format(r.inputs.hoursOn)} hours on; ${setupNote}`, 'own')}
       </tbody></table></div>
-      <p style="margin:10px 0 0"><b>Hours handed back:</b> ${num.format(r.hours.handedBack)} of ${num.format(r.hours.today)} a year (the approver's minutes stay on every route). <b>Saving against today:</b> ${gbp.format(r.savingPerYear)} a year, ${gbp.format(r.savingOver)} over ${n} year${n>1?'s':''}. <b>Against renting seats:</b> ${gbp.format(r.versusSeatsOver)} over ${n} year${n>1?'s':''}. <b>Against a cloud model:</b> ${vc >= 0 ? `${gbp.format(vc)} less over ${n} year${n>1?'s':''}` : `the cloud route is ${gbp.format(-vc)} cheaper over ${n} year${n>1?'s':''} on these inputs`} — on the bill alone the two are close; the difference is that the voice checks every number against its receipt and the cloud model does not.</p>`;
+      <p style="margin:10px 0 0"><b>Hours handed back:</b> ${r.hours.handedBack >= 0 ? `${num.format(r.hours.handedBack)} of ${num.format(r.hours.today)} a year (the approver's minutes and the upkeep stay)` : `none on these inputs — the approving and the upkeep take ${num.format(-r.hours.handedBack)} hours a year more than the posts take today`}. <b>Owning it against today:</b> ${diff(r.savingPerYear)} a year running; ${diff(r.savingOver)} over ${n} year${n>1?'s':''} after the set-up. <b>Pays back its set-up:</b> ${r.paybackMonths === null ? 'not on these inputs — there is no running saving against today' : `in ${num.format(r.paybackMonths)} month${r.paybackMonths === 1 ? '' : 's'} of that saving`}. <b>Against renting seats:</b> ${diff(r.versusSeatsOver)} over ${n} year${n>1?'s':''}. <b>Against a cloud model:</b> ${vc >= 0 ? `${gbp.format(vc)} less over ${n} year${n>1?'s':''}` : `the cloud route is ${gbp.format(-vc)} cheaper over ${n} year${n>1?'s':''} on these inputs`} — on the bill alone the two are close; the difference is that the voice checks every number against its receipt and the cloud model does not.</p>`;
     }
     render();
     $('#sources').innerHTML = sourcesOf(basis).map(s=>`<li><b>${esc(s.key)}</b> — ${esc(s.what)}${s.source ? ` · <a href="${esc(s.source)}">source</a>` : ' (arithmetic, not a source)'}</li>`).join('') + `<li class="muted">${esc(basis.currency)}. The basis is copied byte for byte from sovereign-enterprise; its hash is checked on every push.</li>`;
