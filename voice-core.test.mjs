@@ -1,7 +1,7 @@
 // voice-core.test.mjs — the voice's rules, pinned. The mutation gate runs this suite.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { RULES, draftPost, xLength, overlap, rulesGate, pickReply, percentEncode, oauth1Signature, oauth1Header } from './voice-core.mjs';
+import { RULES, draftPost, xLength, shingles, overlap, rulesGate, pickReply, percentEncode, signatureBaseString, oauth1Signature, oauth1Header } from './voice-core.mjs';
 
 // ── drafting ──────────────────────────────────────────────────────────────────
 test('a receipt card drafts into claim + proof line + link, anchor shortened to 12 hex', () => {
@@ -134,4 +134,62 @@ test('the header is deterministic given nonce+timestamp and carries the signatur
   assert.match(h.header, /oauth_timestamp="111"/);     // a supplied timestamp is USED, not replaced by the clock
   const again = oauth1Header({ method: 'POST', url: 'https://api.x.com/2/tweets', consumerKey: 'ck', consumerSecret: 'cs', token: 'tk', tokenSecret: 'ts', nonce: 'fixednonce', timestamp: 111 });
   assert.equal(h.header, again.header);
+});
+
+// ── fuzz: the kernel is total — garbage is refused (or comes back empty), never thrown ─────────
+const hostile = () => { const o = {}; for (const k of ['id', 'name', 'claim', 'url', 'anchor', 'history', 'todayCount', 'repliedIds', 'authorUsername', 'text']) Object.defineProperty(o, k, { enumerable: true, get() { throw new Error('boom'); } }); return o; };
+const unprintable = { toString() { throw new Error('boom'); } };
+const GARBAGE = [undefined, null, 0, 42, NaN, '', 'x', [], [1, 2], {}, () => 1, Symbol('s'), unprintable, hostile(), String.fromCharCode(0xd800)];
+
+test('fuzz: drafting, length, shingles and the rules gate never throw on garbage', () => {
+  for (const g of GARBAGE) {
+    assert.equal(draftPost(g).ok, false, 'draftPost');
+    assert.equal(typeof xLength(g), 'number', 'xLength');
+    assert.ok(shingles(g) instanceof Set, 'shingles');
+    assert.equal(typeof overlap(g, g), 'number', 'overlap');
+    assert.equal(rulesGate(g, g).ok, false, 'rulesGate');
+  }
+  assert.equal(draftPost(hostile()).error, 'the card could not be read');
+  for (const g of [null, undefined, 42, 'card', true]) assert.equal(draftPost(g).error, 'no card', String(g));   // refused for being no card, not caught as a crash
+  for (const g of [null, undefined, 123, {}, '', '   ']) assert.equal(rulesGate(g, {}).why, 'empty post', String(g));
+  assert.ok(Number.isNaN(xLength(unprintable)));
+  assert.equal(shingles(unprintable).size, 0);
+  const post = `fine post ${'https://sjgant80-hub.github.io/witness/'}`;
+  assert.equal(rulesGate(post, null).why, 'the post or its history could not be read');
+  assert.equal(rulesGate(post, { history: 5 }).why, 'the post or its history could not be read');
+  assert.equal(rulesGate(post, hostile()).why, 'the post or its history could not be read');
+  assert.equal(rulesGate(post).ok, true, 'no options is the default options');
+  assert.equal(rulesGate(post, { history: [unprintable, null, 7] }).ok, true, 'unreadable history entries share nothing with the post');
+});
+
+test('fuzz: the reply rule never throws on garbage', () => {
+  for (const g of GARBAGE) { assert.equal(pickReply(g, g).ok, false); assert.equal(pickReply(g).ok, false); }
+  const m = { id: '9', authorUsername: 'a', text: 'hi' };
+  assert.deepEqual(pickReply(m, null), { ok: false, why: 'malformed mention' });
+  const unread = { ok: false, why: 'the list of answered mentions could not be read' };
+  assert.deepEqual(pickReply(m, { repliedIds: 'nope 9' }), unread, 'a string is not a list: never substring-searched');
+  assert.deepEqual(pickReply(m, { repliedIds: 5 }), unread);
+  assert.deepEqual(pickReply(m, { repliedIds: null }), unread);
+  assert.equal(pickReply(m, { repliedIds: [] }).ok, true);
+  assert.deepEqual(pickReply(hostile(), {}), { ok: false, why: 'malformed mention' });
+  assert.equal(pickReply(m).ok, true, 'no options is the default options');
+});
+
+test('fuzz: signing never throws — garbage gives an empty signature and an empty header, which is never sent', () => {
+  assert.equal(percentEncode(String.fromCharCode(0xd800)), '', 'a lone surrogate X cannot encode');
+  assert.equal(percentEncode(unprintable), '');
+  for (const g of GARBAGE) {
+    assert.equal(typeof percentEncode(g), 'string');
+    assert.equal(typeof signatureBaseString(g, g, g), 'string');
+    assert.equal(typeof oauth1Signature(g), 'string');
+    const h = oauth1Header(g);
+    assert.equal(typeof h.header, 'string');
+  }
+  assert.equal(signatureBaseString(undefined, 'https://api.x.com/2/tweets', {}), '');
+  assert.equal(signatureBaseString('POST', 'https://api.x.com/2/tweets', null), '');
+  assert.equal(oauth1Signature(undefined), '');
+  assert.equal(oauth1Signature({ url: 'https://api.x.com/2/tweets', params: {}, consumerSecret: 'cs' }), '', 'no method: nothing signed');
+  assert.deepEqual(oauth1Header(undefined), { header: '', oauth: null });
+  assert.deepEqual(oauth1Header({ url: 'https://api.x.com/2/tweets', consumerKey: 'ck', consumerSecret: 'cs', token: 'tk', tokenSecret: 'ts' }), { header: '', oauth: null }, 'no method: no header');
+  assert.equal(signatureBaseString('post', 'https://api.x.com/2/tweets', { a: 'b' }), 'POST&https%3A%2F%2Fapi.x.com%2F2%2Ftweets&a%3Db');
 });

@@ -107,6 +107,7 @@ export function organ({ dir = HERE, env = process.env, fetch = globalThis.fetch,
     }
     const url = 'https://api.x.com/2/tweets';
     const { header } = oauth1Header({ method: 'POST', url, consumerKey: env.X_CONSUMER_KEY, consumerSecret: env.X_CONSUMER_SECRET, token: env.X_ACCESS_TOKEN, tokenSecret: env.X_ACCESS_SECRET });
+    if (!header) { log(`✗ ${item.cardId}: the request could not be signed`); return { posted: false, why: 'the request could not be signed' }; }
     const r = await fetch(url, { method: 'POST', headers: { Authorization: header, 'Content-Type': 'application/json' }, body: JSON.stringify({ text: item.text }) });
     const j = await r.json().catch(() => ({}));
     if (!r.ok) { log(`✗ X refused (${r.status})`); return { posted: false, why: `X refused (${r.status})` }; }

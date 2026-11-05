@@ -29,7 +29,12 @@ export const RULES = Object.freeze({
 // ── drafting: a receipt card becomes one plain post ──────────────────────────
 // No hype, no hashtag spam, no emoji carpet. The claim, the number, the proof, the link — because
 // the reader we care about is as likely to be an agent as a human.
+// Total, like every kernel here: garbage in gives { ok: false, … } (or an empty value), never a throw — a hostile card,
+// a hostile options object or a string X cannot encode is refused, not crashed on.
 export function draftPost(card) {
+  try { return draftOf(card); } catch { return { ok: false, error: 'the card could not be read' }; }
+}
+function draftOf(card) {
   if (!card || typeof card !== 'object') return { ok: false, error: 'no card' };
   for (const k of ['name', 'claim', 'url']) {
     if (typeof card[k] !== 'string' || !card[k].trim()) return { ok: false, error: `card needs ${k}` };
@@ -45,17 +50,21 @@ export function draftPost(card) {
 
 // X counts every URL as 23 chars. Count that way, not by string length.
 export function xLength(text) {
-  const urls = String(text).match(/https?:\/\/\S+/g) || [];
-  let len = String(text).length;
-  for (const u of urls) len += RULES.tcoUrlLength - u.length;
-  return len;
+  try {
+    const urls = String(text).match(/https?:\/\/\S+/g) || [];
+    let len = String(text).length;
+    for (const u of urls) len += RULES.tcoUrlLength - u.length;
+    return len;
+  } catch { return NaN; }
 }
 
 // ── near-duplicate detection: word shingles, Jaccard overlap ─────────────────
 export function shingles(text, k = 3) {
-  const words = String(text).toLowerCase().replace(/https?:\/\/\S+/g, '').replace(/[^a-z0-9\s]/g, ' ').split(/\s+/).filter(Boolean);
   const out = new Set();
-  for (let i = 0; i + k <= words.length; i++) out.add(words.slice(i, i + k).join(' '));
+  try {
+    const words = String(text).toLowerCase().replace(/https?:\/\/\S+/g, '').replace(/[^a-z0-9\s]/g, ' ').split(/\s+/).filter(Boolean);
+    for (let i = 0; i + k <= words.length; i++) out.add(words.slice(i, i + k).join(' '));
+  } catch { /* unreadable text has no shingles */ }
   return out;
 }
 export function overlap(a, b) {
@@ -68,7 +77,10 @@ export function overlap(a, b) {
 
 // ── the rules gate: nothing posts unless this says ok ────────────────────────
 // history = texts already posted (ever); todayCount = posts already made today.
-export function rulesGate(text, { history = [], todayCount = 0, maxPerDay = RULES.maxPerDay } = {}) {
+export function rulesGate(text, opts) {
+  try { return gateOf(text, opts); } catch { return { ok: false, why: 'the post or its history could not be read' }; }
+}
+function gateOf(text, { history = [], todayCount = 0, maxPerDay = RULES.maxPerDay } = {}) {
   if (typeof text !== 'string' || !text.trim()) return { ok: false, why: 'empty post' };
   const len = xLength(text);
   if (len > RULES.maxChars) return { ok: false, why: `too long: ${len} > ${RULES.maxChars} (URLs count as ${RULES.tcoUrlLength})` };
@@ -83,7 +95,11 @@ export function rulesGate(text, { history = [], todayCount = 0, maxPerDay = RULE
 
 // ── replies: only when summoned, once per mention, opt-out honoured ──────────
 // mention = { id, authorUsername, text }; repliedIds = mention ids already answered.
-export function pickReply(mention, { repliedIds = [], selfUsername = '' } = {}) {
+export function pickReply(mention, opts) {
+  try { return replyOf(mention, opts); } catch { return { ok: false, why: 'malformed mention' }; }
+}
+function replyOf(mention, { repliedIds = [], selfUsername = '' } = {}) {
+  if (!Array.isArray(repliedIds)) return { ok: false, why: 'the list of answered mentions could not be read' };
   if (!mention || typeof mention.id !== 'string' || !mention.id) return { ok: false, why: 'malformed mention' };
   if (repliedIds.includes(mention.id)) return { ok: false, why: 'already answered — one automated reply per interaction' };
   if (typeof mention.authorUsername !== 'string' || !mention.authorUsername) return { ok: false, why: 'no author' };
@@ -99,11 +115,18 @@ export function pickReply(mention, { repliedIds = [], selfUsername = '' } = {}) 
 // ── OAuth 1.0a (HMAC-SHA1) — the signature X's v2 POST /2/tweets accepts ─────
 // Pure over its inputs; nonce and timestamp are parameters so the whole thing is testable against
 // the canonical RFC vector. percentEncode is RFC 3986 (OAuth's stricter variant of encodeURIComponent).
+// The signing functions are total too: garbage (or a string X cannot encode, such as a lone surrogate) gives '' — and
+// an empty header, which voice.mjs refuses to send — never a throw.
 export function percentEncode(s) {
-  return encodeURIComponent(String(s)).replace(/[!'()*]/g, (c) => '%' + c.charCodeAt(0).toString(16).toUpperCase());
+  try {
+    return encodeURIComponent(String(s)).replace(/[!'()*]/g, (c) => '%' + c.charCodeAt(0).toString(16).toUpperCase());
+  } catch { return ''; }
 }
 
 export function signatureBaseString(method, url, params) {
+  try { return baseOf(method, url, params); } catch { return ''; }
+}
+function baseOf(method, url, params) {
   const pairs = [];
   for (const [k, v] of Object.entries(params)) pairs.push([percentEncode(k), percentEncode(v)]);
   // params arrive as a JS object, so keys are unique BY CONSTRUCTION — the spec's sort-by-value
@@ -114,13 +137,20 @@ export function signatureBaseString(method, url, params) {
   return `${method.toUpperCase()}&${percentEncode(url)}&${percentEncode(paramStr)}`;
 }
 
-export function oauth1Signature({ method, url, params, consumerSecret, tokenSecret }) {
+export function oauth1Signature(args) {
+  try { return signatureOf(args); } catch { return ''; }
+}
+function signatureOf({ method, url, params, consumerSecret, tokenSecret }) {
   const base = signatureBaseString(method, url, params);
+  if (!base) return '';
   const key = `${percentEncode(consumerSecret)}&${percentEncode(tokenSecret || '')}`;
   return createHmac('sha1', key).update(base).digest('base64');
 }
 
-export function oauth1Header({ method, url, consumerKey, consumerSecret, token, tokenSecret, nonce, timestamp }) {
+export function oauth1Header(args) {
+  try { return headerOf(args); } catch { return { header: '', oauth: null }; }
+}
+function headerOf({ method, url, consumerKey, consumerSecret, token, tokenSecret, nonce, timestamp }) {
   const oauth = {
     oauth_consumer_key: consumerKey,
     oauth_nonce: nonce || randomBytes(16).toString('hex'),
@@ -130,6 +160,7 @@ export function oauth1Header({ method, url, consumerKey, consumerSecret, token, 
     oauth_version: '1.0',
   };
   const sig = oauth1Signature({ method, url, params: oauth, consumerSecret, tokenSecret });
+  if (!sig) return { header: '', oauth: null };   // nothing signed, nothing to send
   const all = { ...oauth, oauth_signature: sig };
   const header = 'OAuth ' + Object.keys(all).sort().map((k) => `${percentEncode(k)}="${percentEncode(all[k])}"`).join(', ');
   return { header, oauth: all };

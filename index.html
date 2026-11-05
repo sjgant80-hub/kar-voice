@@ -79,7 +79,7 @@
     <ol style="margin:0;padding-left:20px">
       <li><b>Read a draft below.</b> Each one was written from a receipt card: a named result, the receipt's hash, a link.</li>
       <li><b>Watch it get checked.</b> As this page loads, your browser fetches each receipt from GitHub at the exact commit the card pins, hashes it, and matches every number in the post to a field of that receipt. A card that fails says why.</li>
-      <li><b>See what it waits for.</b> A draft that passes waits for Simon's approval of those exact words. Until he adds his own X keys, even an approved post is only a rehearsal, and it shows in the ledger as one.</li>
+      <li><b>See what it waits for.</b> A draft that passes waits for the approval of Simon (the company's owner, the one person who can say yes) of those exact words. Until he adds his own X keys, even an approved post is only a rehearsal, and it shows in the ledger as one.</li>
       <li><b>Thinking of running it for your own company?</b> Read <a href="#business">For your business</a> (what it does for each role, and a cost case you fill in with your own numbers), then <a href="#adoption">Adoption</a> (how a team rolls it out).</li>
     </ol>
     <p style="margin:10px 0 0">This is the voice of an AI-run company. The whole company (the conductor, the reach arm, the funnel, delivery, oversight, one full measured cycle, and the case for running a business this way) is at <a href="https://sjgant80-hub.github.io/ai-first-company/">AI-First Company</a>.</p>
@@ -217,7 +217,7 @@
     <h3>What it does for each role</h3>
     <ul style="margin:0;padding-left:20px">
       <li><b>Chief executive:</b> the company never says more than it has shown, nothing goes out under its name without a named person's yes, and every public number has a trail back to a committed file.</li>
-      <li><b>Finance:</b> the drafting and fact-checking time comes off the people who do it today (the <a href="#cost">cost case</a> computes it from your own numbers and the UK median wage); no new subscription; it runs on a machine you already have.</li>
+      <li><b>Finance:</b> the drafting and fact-checking time comes off the people who do it today (the <a href="#cost">cost case</a> computes it from your own numbers and the UK median wage); no new subscription; it runs on a machine you already have. Posting through X's API is charged by X per post; you enter X's own price in the cost case and it is counted.</li>
       <li><b>Operations:</b> one queue, one approver, a fixed daily cap and a public ledger: a routine that runs the same way every day, with the hours handed back shown in the cost case.</li>
       <li><b>Technology and security:</b> no dependencies to patch, keys only in the machine's environment (measured: never written or printed), two outbound hosts, kernels mutation-gated in CI, and source you can read end to end.</li>
       <li><b>Marketing and communications:</b> proof posts drafted from results the teams already publish; near-duplicates caught before X refuses them; replies only to people who ask, which is where X's own automation rules draw the line, so the account stays safe.</li>
@@ -232,15 +232,17 @@
       <label>Minutes a person spends writing and checking one post today <input id="in-minutesPerPost" type="number" min="0" step="any" inputmode="decimal"></label>
       <label>Minutes the approver still spends reading one post <input id="in-approveMinutes" type="number" min="0" step="any" inputmode="decimal"></label>
       <label>Assistant seats you would rent instead <input id="in-seats" type="number" min="0" step="1" inputmode="numeric"></label>
+      <label>Minutes a seat would save on each post (starts at none: set your own) <input id="in-seatSavesMinutes" type="number" min="0" step="any" inputmode="decimal"></label>
       <label>A cloud model's tokens in, per post <input id="in-tokensIn" type="number" min="0" step="1" inputmode="numeric"></label>
       <label>A cloud model's tokens out, per post <input id="in-tokensOut" type="number" min="0" step="1" inputmode="numeric"></label>
+      <label>Dollars X charges for one post through its API (from X's pricing page, below; left out until you enter it) <input id="in-xPerPostUsd" type="number" min="0" step="any" inputmode="decimal"></label>
       <label>Hours, once, to set it up (copy it, point it at your organisation, write the first cards, run it dry) <input id="in-setupHours" type="number" min="0" step="any" inputmode="decimal"></label>
       <label>Hours a month to keep it running (new cards, reading refusals) <input id="in-upkeepHoursPerMonth" type="number" min="0" step="any" inputmode="decimal"></label>
       <label>Hours a year the voice's machine counts as on <input id="in-hoursOn" type="number" min="0" step="1" inputmode="numeric"></label>
       <label>Years <input id="in-years" type="number" min="1" step="1" inputmode="numeric"></label>
     </div>
     <div id="case"><p class="muted">loading the sourced basis…</p></div>
-    <p style="margin:10px 0 0">X's own charge for its API is the same on every route (the same posts go out) and is not in the sourced basis, so it is left out of every line. A scheduling tool you may pay for today is not in the basis either, so it is not counted.</p>
+    <p style="margin:10px 0 0"><b>X's own charge.</b> Both automated routes (the cloud model and the voice) post through X's API, and X charges for each post made that way, with a higher rate for a post that carries a link (every post here does). Posting by hand, today or with seats, does not pay it. X's price is not in the sourced basis, so this page does not type it in: read it on <a href="https://docs.x.com/x-api/getting-started/pricing">X's own pricing page</a> and enter it above, and it is added to both automated routes at the basis's exchange rate. A scheduling tool you may pay for today is not in the basis either, so it is not counted.</p>
     <details style="margin:10px 0 0"><summary>Where every figure comes from</summary><ul id="sources" style="margin:6px 0 0;padding-left:20px"></ul></details>
 
     <h3>Security and data protection</h3>
@@ -266,6 +268,7 @@
       <li><b>Name the approver</b> (communications lead or founder). Approvals are recorded with their words, one post at a time.</li>
       <li><b>Turn the key when ready.</b> The owner adds the four X variables to the machine's environment and sets DRY_RUN=0; <code>node voice.mjs post &lt;id&gt;</code> posts one approved item.</li>
     </ol>
+    <p style="margin:8px 0 0"><b>One copy, one account.</b> The four variables are one X account's keys, and the queue, approvals and ledger are one set of files, so a copy speaks for one account. A second brand or account is a second copy, with its own keys, its own approver and its own public ledger.</p>
     <p style="margin:8px 0 0"><b>A day with it.</b> When new receipts land, someone (or a scheduled task) runs <code>node voice.mjs draft</code>; the approver reads the queue on this page and says yes to exact words; <code>post</code> sends one approved item at a time, and the cap holds it to <span data-f="maxPerDay">…</span> a day. <code>node voice.mjs status</code> shows the counts and whether the keys are present, never the keys.</p>
 
     <h3>Ownership, support and exit</h3>
@@ -280,10 +283,10 @@
       <li><b>X sets the terms.</b> If X changes its rules, prices or API, posting may stop; the drafting, the gates, this page and the ledger keep working.</li>
       <li><b>An approval is a record, not a signature.</b> Kar writes it on the approver's word, quoted; whoever can write to the machine or the repo could add one. Guard the approval file like the keys: the same people should hold both.</li>
       <li><b>No third-party certification is claimed.</b> The evidence is the source itself, the mutation gate that runs on every push, and the sealed measurement with its failure kept.</li>
-      <li><b>It has not posted live yet.</b> The ledger above shows rehearsals only until the owner adds the keys. Its evidence today is the sealed measurement, failure included.</li>
+      <li><b>It has not posted live yet, and no other company runs it yet.</b> The ledger above shows rehearsals only until the owner adds the keys. Its evidence today is the sealed measurement, failure included, and the source you can run yourself.</li>
     </ul>
 
-    <p style="margin:12px 0 0"><b>The case for the board:</b> public claims the company can always back with evidence anyone can fetch, a named person's yes on every word that goes out, no new subscription, and the staff time on proof posts handed back — computed above from your own numbers. The whole company this voice belongs to, and its case, is at <a href="https://sjgant80-hub.github.io/ai-first-company/#case">AI-First Company</a>.</p>
+    <p style="margin:12px 0 0"><b>The case for the board:</b> public claims the company can always back with evidence anyone can fetch, a named person's yes on every word that goes out, no new subscription (X's own per-post charge aside), and the staff time on proof posts handed back — computed above from your own numbers. The whole company this voice belongs to, and its case, is at <a href="https://sjgant80-hub.github.io/ai-first-company/#case">AI-First Company</a>.</p>
   </div>
 
   <h2 id="paper">White paper — proof before speech</h2>
@@ -416,7 +419,7 @@ const num = new Intl.NumberFormat('en-GB',{maximumFractionDigits:2});
   // blueprint: the baseline as the repo shows it, and the files today
   try {
     const b = await (await fetch('witness.baseline.json'+cb())).json();
-    $('#baseline').innerHTML = b.length ? `<b>${b.length} reviewed-equivalent survivor${b.length>1?'s':''}</b> baselined, ${b.length>1?'each':''} with its written reason: <i>${esc(b.map(x=>x.mutation+' — '+x.reason).join(' | '))}</i>` : '<b>nothing baselined</b>';
+    $('#baseline').innerHTML = b.length ? `<b>${b.length} reviewed-equivalent survivor${b.length>1?'s':''}</b> baselined, ${b.length>1?'each ':''}with its written reason: <i>${esc(b.map(x=>x.mutation+' — '+x.reason).join(' | '))}</i>` : '<b>nothing baselined</b>';
   } catch { setText('baseline', 'baseline file not loaded'); }
   setText('bp-files', `${feed.length} cards, ${queue.length} queued, ${approvals.filter(a=>a.by==='simon' && !a.withdrawn).length} approved by Simon, ${posted.length} in the ledger (${live.length} live)`);
 
@@ -449,7 +452,7 @@ const num = new Intl.NumberFormat('en-GB',{maximumFractionDigits:2});
     ]);
     let cap = null;
     try { cap = (await import('./voice-core.mjs'+cb())).RULES.maxPerDay; } catch {}
-    const keys = ['postsPerWeek','minutesPerPost','approveMinutes','seats','tokensIn','tokensOut','setupHours','upkeepHoursPerMonth','hoursOn','years'];
+    const keys = ['postsPerWeek','minutesPerPost','approveMinutes','seats','seatSavesMinutes','tokensIn','tokensOut','xPerPostUsd','setupHours','upkeepHoursPerMonth','hoursOn','years'];
     const start = { ...DEFAULTS, hoursOn: basis.hoursPerYear.value };
     for (const k of keys) { const el = document.getElementById('in-'+k); el.value = start[k]; el.addEventListener('input', render); }
     if (cap) document.getElementById('in-postsPerWeek').max = String(7 * cap);
@@ -464,16 +467,18 @@ const num = new Intl.NumberFormat('en-GB',{maximumFractionDigits:2});
       const vc = r.versusCloudOver;
       const diff = (v) => v >= 0 ? `${gbp.format(v)} less` : `${gbp.format(-v)} more`;
       const setupNote = `the one-off set-up (${num.format(r.inputs.setupHours)} hours, ${gbp.format(r.lines.setup)}) is counted once, on the right`;
+      const xNote = r.inputs.xPerPostUsd > 0 ? `X's charge for posting through its API, $${num.format(r.inputs.xPerPostUsd)} a post as you entered it (${gbp.format(r.lines.xApi)} a year)` : `X's charge for posting through its API is not counted until you enter it`;
+      const seatNote = r.inputs.seatSavesMinutes > 0 ? `you say a seat saves ${num.format(r.inputs.seatSavesMinutes)} minutes a post, so the staff time falls to ${num.format(r.hours.withSeats)} hours a year (${gbp.format(r.lines.seatSaved)} of it back)` : `on your figure a seat saves no minutes, so the staff time stays at ${num.format(r.hours.withSeats)} hours a year; set the minutes a seat saves above if you expect it to help`;
       $('#case').innerHTML = `<div class="tblwrap"><table class="tbl"><thead><tr><th>Route</th><th class="n">a year, running</th><th class="n">over ${n} year${n>1?'s':''}, set-up included</th></tr></thead><tbody>
         ${row('Today', `people write and check every post: ${num.format(r.hours.today)} hours a year at the UK median wage, ${gbp.format(wage)} an hour`, 'today')}
-        ${row('Rent assistant seats', `${r.inputs.seats} × ${esc(seat.product)} at ${gbp.format(seat.value)} per user a month; they help each person but take no work off, so the staff time stays`, 'rentSeats')}
-        ${row('A cloud model drafts each post', `${esc(api.product)} at $${api.inPerM} in / $${api.outPerM} out per million tokens, converted at ${basis.fxGbpPerUsd.value}; counted as taking the same work off as the voice, plus the approval time and the same upkeep (generous to it: it does no claim check); ${setupNote}`, 'cloudApi')}
-        ${row('Own the voice', `the approval time that stays (${num.format(r.hours.approving)} hours a year), the upkeep (${num.format(r.hours.upkeep)} hours a year, ${gbp.format(r.lines.upkeep)}), and the extra power of the machine it runs on, ${gbp.format(r.lines.power)} a year counted at ${num.format(r.inputs.hoursOn)} hours on; ${setupNote}`, 'own')}
+        ${row('Rent assistant seats', `${r.inputs.seats} × ${esc(seat.product)} at ${gbp.format(seat.value)} per user a month, posted by hand; ${seatNote}`, 'rentSeats')}
+        ${row('A cloud model drafts each post', `${esc(api.product)} at $${api.inPerM} in / $${api.outPerM} out per million tokens, converted at ${basis.fxGbpPerUsd.value}; counted as taking the same work off as the voice, plus the approval time and the same upkeep (generous to it: it does no claim check); ${xNote}; ${setupNote}`, 'cloudApi')}
+        ${row('Own the voice', `the approval time that stays (${num.format(r.hours.approving)} hours a year), the upkeep (${num.format(r.hours.upkeep)} hours a year, ${gbp.format(r.lines.upkeep)}), and the extra power of the machine it runs on, ${gbp.format(r.lines.power)} a year counted at ${num.format(r.inputs.hoursOn)} hours on; ${xNote}; ${setupNote}`, 'own')}
       </tbody></table></div>
       <p style="margin:10px 0 0"><b>Hours handed back:</b> ${r.hours.handedBack >= 0 ? `${num.format(r.hours.handedBack)} of ${num.format(r.hours.today)} a year (the approver's minutes and the upkeep stay)` : `none on these inputs — the approving and the upkeep take ${num.format(-r.hours.handedBack)} hours a year more than the posts take today`}. <b>Owning it against today:</b> ${diff(r.savingPerYear)} a year running; ${diff(r.savingOver)} over ${n} year${n>1?'s':''} after the set-up. <b>Pays back its set-up:</b> ${r.paybackMonths === null ? 'not on these inputs — there is no running saving against today' : `in ${num.format(r.paybackMonths)} month${r.paybackMonths === 1 ? '' : 's'} of that saving`}. <b>Against renting seats:</b> ${diff(r.versusSeatsOver)} over ${n} year${n>1?'s':''}. <b>Against a cloud model:</b> ${vc >= 0 ? `${gbp.format(vc)} less over ${n} year${n>1?'s':''}` : `the cloud route is ${gbp.format(-vc)} cheaper over ${n} year${n>1?'s':''} on these inputs`} — on the bill alone the two are close; the difference is that the voice checks every number against its receipt and the cloud model does not.</p>`;
     }
     render();
-    $('#sources').innerHTML = sourcesOf(basis).map(s=>`<li><b>${esc(s.key)}</b> — ${esc(s.what)}${s.source ? ` · <a href="${esc(s.source)}">source</a>` : ' (arithmetic, not a source)'}</li>`).join('') + `<li class="muted">${esc(basis.currency)}. The basis is copied byte for byte from sovereign-enterprise; its hash is checked on every push.</li>`;
+    $('#sources').innerHTML = sourcesOf(basis).map(s=>`<li><b>${esc(s.key)}</b> — ${esc(s.what)}${s.source ? ` · <a href="${esc(s.source)}">source</a>` : ' (arithmetic, not a source)'}</li>`).join('') + `<li><b>X's charge for a post</b> — not in the basis: your own entry, read from <a href="https://docs.x.com/x-api/getting-started/pricing">X's pricing page</a>, converted at fxGbpPerUsd above</li><li><b>Minutes a seat saves</b> — not in the basis: your own figure</li><li class="muted">${esc(basis.currency)}. The basis is copied byte for byte from sovereign-enterprise; its hash is checked on every push.</li>`;
   } catch { $('#case').innerHTML = '<p class="muted">the cost case could not be loaded here.</p>'; }
 })();
 </script>

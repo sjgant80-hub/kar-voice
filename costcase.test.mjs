@@ -3,7 +3,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
-import { DEFAULTS, BASIS_KEYS, MAX_MINUTES, MAX_HOURS_ON, MAX_SETUP_HOURS, MAX_UPKEEP_HOURS, sourcesOf, over, voiceCase } from './costcase.mjs';
+import { DEFAULTS, BASIS_KEYS, MAX_MINUTES, MAX_HOURS_ON, MAX_SETUP_HOURS, MAX_UPKEEP_HOURS, MAX_X_USD, sourcesOf, over, voiceCase } from './costcase.mjs';
 import { RULES } from './voice-core.mjs';
 
 const BASIS_TEXT = readFileSync(new URL('./vendor/sovereign-enterprise/data/basis.json', import.meta.url));
@@ -24,8 +24,8 @@ test('voiceCase · the default case, every line from the sourced basis', () => {
   const r = voiceCase(BASIS, {}, CAP);
   assert.equal(r.ok, true);
   assert.deepEqual(r.inputs, { ...DEFAULTS, hoursOn: BASIS.hoursPerYear.value });
-  assert.deepEqual(r.hours, { today: 260, approving: 43.33, upkeep: 24, handedBack: 192.67 });
-  assert.deepEqual(r.lines, { staff: 5114.2, approve: 852.37, takenOff: 4261.83, seats: 554.4, api: 2.35, power: 32.21, setup: 314.72, upkeep: 472.08 });
+  assert.deepEqual(r.hours, { today: 260, approving: 43.33, upkeep: 24, handedBack: 192.67, withSeats: 260 });
+  assert.deepEqual(r.lines, { staff: 5114.2, approve: 852.37, takenOff: 4261.83, seats: 554.4, seatSaved: 0, api: 2.35, xApi: 0, power: 32.21, setup: 314.72, upkeep: 472.08 });
   assert.deepEqual(r.perYear, { today: 5114.2, rentSeats: 5668.6, cloudApi: 1326.8, own: 1356.66 });
   assert.deepEqual(r.over, { today: 15823.14, rentSeats: 17538.43, cloudApi: 4419.79, own: 4512.17 });
   assert.deepEqual([r.savingPerYear, r.savingOver, r.versusSeatsOver, r.versusCloudOver], [3757.54, 11310.97, 13026.26, -92.38]);
@@ -68,7 +68,51 @@ test('voiceCase · payback only when there is a running saving', () => {
   assert.equal(tiny.paybackMonths, r2(BASIS.wageMedianHourly.value / (tiny.savingPerYear / 12)));
 });
 
-test('voiceCase · like for like: seats take nothing off; the cloud model and the owned voice take the same off; approval stays on both', () => {
+test("voiceCase · seats save only the minutes the reader says they save, and the seats' bill is added", () => {
+  const w = BASIS.wageMedianHourly.value;
+  const r = voiceCase(BASIS, { seatSavesMinutes: 12 }, CAP);
+  assert.equal(r.lines.seatSaved, r2(10 * 52 * 12 / 60 * w));
+  assert.equal(r.perYear.rentSeats, r2(r.lines.staff - r.lines.seatSaved + r.lines.seats));
+  assert.equal(r.hours.withSeats, 156);
+  assert.equal(r.perYear.today, r.lines.staff, 'today is untouched by seats');
+  assert.equal(r.perYear.own, voiceCase(BASIS, {}, CAP).perYear.own, 'owning the voice is untouched by seats');
+  const all = voiceCase(BASIS, { seatSavesMinutes: 30 }, CAP);
+  assert.equal(all.ok, true, 'a seat may save the whole post');
+  assert.equal(all.hours.withSeats, 0);
+  assert.equal(all.perYear.rentSeats, all.lines.seats);
+  assert.equal(voiceCase(BASIS, { minutesPerPost: 10, approveMinutes: 2, seatSavesMinutes: 10 }, CAP).ok, true);
+  const why = 'minutes a seat saves on a post: no more than a post takes today';
+  assert.equal(voiceCase(BASIS, { seatSavesMinutes: 30.5 }, CAP).why, why);
+  assert.equal(voiceCase(BASIS, { minutesPerPost: 10, approveMinutes: 2, seatSavesMinutes: 11 }, CAP).why, why);
+  assert.equal(voiceCase(BASIS, { seatSavesMinutes: -1 }, CAP).why, why);
+  assert.equal(voiceCase(BASIS, { seatSavesMinutes: '5' }, CAP).why, why);
+  assert.equal(voiceCase(BASIS, { seatSavesMinutes: NaN }, CAP).why, why);
+});
+
+test("voiceCase · X's per-post charge: the reader's own figure, on both automated routes only, converted at the basis's rate", () => {
+  const fx = BASIS.fxGbpPerUsd.value, cpi = BASIS.cpi.value;
+  const r = voiceCase(BASIS, { xPerPostUsd: 0.5 }, CAP);
+  assert.equal(r.lines.xApi, r2(10 * 52 * 0.5 * fx));
+  const none = voiceCase(BASIS, {}, CAP);
+  assert.equal(none.lines.xApi, 0, 'left out until the reader enters it');
+  assert.equal(r.perYear.own, r2(none.perYear.own + r.lines.xApi));
+  assert.equal(r.perYear.cloudApi, r2(none.perYear.cloudApi + r.lines.xApi));
+  assert.equal(r.perYear.today, none.perYear.today, 'posting by hand pays no API charge');
+  assert.equal(r.perYear.rentSeats, none.perYear.rentSeats, 'posting by hand with seats pays no API charge');
+  assert.equal(r.over.own, r2(over(r.perYear.own, cpi, 3) + r.lines.setup));
+  assert.equal(r.savingPerYear, r2(none.savingPerYear - r.lines.xApi));
+  assert.equal(r.versusCloudOver, none.versusCloudOver, 'the same charge on both automated routes');
+  const priced = voiceCase(base({ fxGbpPerUsd: { ...BASIS.fxGbpPerUsd, value: 1 } }), { xPerPostUsd: 2 }, CAP);
+  assert.equal(priced.lines.xApi, 1040);
+  assert.equal(voiceCase(BASIS, { xPerPostUsd: MAX_X_USD }, CAP).ok, true);
+  const why = `X’s charge for a post: 0 to ${MAX_X_USD} dollars`;
+  assert.equal(voiceCase(BASIS, { xPerPostUsd: MAX_X_USD + 0.01 }, CAP).why, why);
+  assert.equal(voiceCase(BASIS, { xPerPostUsd: -0.01 }, CAP).why, why);
+  assert.equal(voiceCase(BASIS, { xPerPostUsd: '0.2' }, CAP).why, why);
+  assert.equal(voiceCase(BASIS, { xPerPostUsd: Infinity }, CAP).why, why);
+});
+
+test('voiceCase · like for like: seats take nothing off until the reader says they save minutes; the cloud model and the owned voice take the same off; approval stays on both', () => {
   const r = voiceCase(BASIS, { postsPerWeek: 20, minutesPerPost: 60, approveMinutes: 10, seats: 3, tokensIn: 2000, tokensOut: 500 }, CAP);
   assert.equal(r.perYear.rentSeats, r2(r.lines.staff + r.lines.seats));
   assert.equal(r.perYear.cloudApi, r2(r.lines.approve + r.lines.api + r.lines.upkeep));
